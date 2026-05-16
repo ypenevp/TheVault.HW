@@ -52,8 +52,7 @@ string Transistor::getData() const {
 }
 
 vector<string> Transistor::getFields() const {
-    return { "Type(NPN/PNP)", "Max Current(A)", "Vbe(V)",
-             "Power Dissipation(W)", "Beta", "Alfa" };
+    return {"Type (NPN/PNP/MOSFET)", "Max Vce/Vds{V}", "Max Ic/Id{A}", "Max Power Dissipation{W}", "hFE/hFS{Gain}"};
 }
 
 void Transistor::setTransistorType(const string& transistorType) {

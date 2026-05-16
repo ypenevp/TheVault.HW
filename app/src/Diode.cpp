@@ -34,7 +34,7 @@ string Diode::getData() const {
 }
 
 vector<string> Diode::getFields() const {
-    return { "Forward Voltage (V)", "Max Current (A)" };
+    return {"Forward Voltage{V}", "Reverse Breakdown Voltage{V}", "Max Forward Current{A}", "Max Power Dissipation{W}"};
 }
 
 void Diode::setFields(const vector<string>& values) {

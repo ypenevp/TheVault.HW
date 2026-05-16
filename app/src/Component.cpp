@@ -2,10 +2,12 @@
 
 Component::Component(int id, const std::string &model, double price, int quantity,
                      const std::string &mountingType, const std::string &storageLocation,
+                     const std::string &packageType, const std::string &datasheet,
                      Category *category,
                      const std::map<std::string, std::string> &customValues)
     : id(id), model(model), price(price), quantity(quantity),
       mountingType(mountingType), storageLocation(storageLocation),
+      packageType(packageType), datasheet(datasheet),
       category(category), customValues(customValues) {}
 
 
@@ -22,6 +24,14 @@ double Component::getPrice() const {
 
 int Component::getQuantity() const { 
   return this->quantity;
+}
+
+std::string Component::getPackage() const {
+  return this->packageType;
+}
+
+std::string Component::getDatasheet() const {
+  return this->datasheet;
 }
 
 std::string Component::getMountingType() const { 
@@ -57,7 +67,15 @@ void Component::setQuantity(int quantity) {
   this->quantity = quantity;
 }
 
-void Component::setMountingType(const std::string &mountingType) { 
+void Component::setPackage(const std::string &packageType) {
+  this->packageType = packageType;
+}
+
+void Component::setDatasheet(const std::string &datasheet) {
+  this->datasheet = datasheet;
+}
+
+void Component::setMountingType(const std::string &mountingType) {
   this->mountingType = mountingType;
 }
 

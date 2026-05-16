@@ -36,7 +36,7 @@ string Resistor::getData() const {
 }
 
 vector<string> Resistor::getFields() const {
-    return { "Resistance (Ohm)", "Power Rating (W)", "Tolerance (%)", "TCR (ppm/degC)" };
+    return {"Resistance{Ohm}", "Tolerance{%}", "Power Rating{W}", "TCR{ppm/degC}"};
 }
 
 

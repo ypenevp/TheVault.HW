@@ -94,24 +94,13 @@ static string readString(const string& prompt) {
     return value;
 }
 
-static string readOptionalString(const string& prompt) {
-    cout << prompt;
-    string input;
-    getline(cin, input);
-    if (input.empty()) return "-";
-    return input;
-}
-
-static string readMountingType() {
-    while (true) {
-        string mt = readString("  ❖ Mounting Type (SMD / THT / Module): ");
-        if (mt == "SMD" || mt == "THT" || mt == "Module") return mt;
-        cout << BRIGHT_RED << "  ✖ Must be SMD, THT, or Module.\n" << RESET;
-    }
-}
-
 static string readStringOptional(const string& prompt, const string& defaultVal) {
-    cout << BRIGHT_CYAN << prompt << " [" << defaultVal << "]: " << RESET;
+    if (defaultVal == "-") {
+        cout << BRIGHT_CYAN << prompt << ":"  << RESET;
+    } else {
+        cout << BRIGHT_CYAN << prompt << " [" << defaultVal << "]: " << RESET;
+    }
+
     string value;
     getline(cin, value);
     if (value.empty()) return defaultVal;
@@ -132,12 +121,22 @@ static double readDoubleOptional(const string& prompt, double defaultVal, const 
     }
 }
 
-static string readMountingTypeOptional(const string& defaultVal) {
+static string readDashOptional(const string& prompt) {
+    cout << BRIGHT_CYAN << prompt << RESET;
+    string input;
+    getline(cin, input);
+    if (input.empty()) return "-";
+    return input;
+}
+
+static string readMountingType(const string& defaultVal = "") {
     while (true) {
-        cout << BRIGHT_CYAN << "  ❖ Mounting Type (SMD / THT / Module) [" << defaultVal << "]: " << RESET;
-        string mt;
-        getline(cin, mt);
-        if (mt.empty()) return defaultVal;
+        string prompt = defaultVal.empty()
+            ? "  ❖ Mounting Type (SMD / THT / Module): "
+            : "  ❖ Mounting Type (SMD / THT / Module)";
+
+        string mt = defaultVal.empty() ? readString(prompt) : readStringOptional(prompt, defaultVal);
+
         if (mt == "SMD" || mt == "THT" || mt == "Module") return mt;
         cout << BRIGHT_RED << "  ✖ Must be SMD, THT, or Module.\n" << RESET;
     }
@@ -215,7 +214,7 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
          << " | " << setw(10) << "Package"
          << " | " << setw(15) << "Location" << "\n" << RESET;
 
-    cout << BRIGHT_WHITE << string(115, '-') << "\n" << RESET;
+    cout << BRIGHT_WHITE << string(120, '-') << "\n" << RESET;
 
     for (const auto* c : comps) {
         int totQty = c->getQuantity();
@@ -253,9 +252,13 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
 
         auto customVals = c->getCustomValues();
         if (!customVals.empty()) {
-            cout << "       └─ " << BOLD << BRIGHT_MAGENTA << "Details: " << RESET;
-            for (auto it = customVals.begin(); it != customVals.end(); ++it) {
+            string prefix = "       └─ " + BOLD + BRIGHT_MAGENTA + "Details: " + RESET;
+            cout << prefix;
 
+            int currentLineLength = 17;
+            int maxLineLength = 118;
+
+            for (auto it = customVals.begin(); it != customVals.end(); ++it) {
                 string key = it->first;
                 string value = it->second;
                 string unit = "";
@@ -267,6 +270,16 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
                     key = key.substr(0, s);
                 }
 
+                int partLength = key.length() + 2 + value.length() + (unit.empty() ? 0 : 1 + unit.length());
+                if (next(it) != customVals.end()) {
+                    partLength += 2;
+                }
+
+                if (currentLineLength + partLength > maxLineLength) {
+                    cout << "\n                   ";
+                    currentLineLength = 19;
+                }
+
                 cout << BRIGHT_WHITE << key << ": " << BRIGHT_ORANGE << value;
                 if (!unit.empty()) {
                     cout << " " << unit;
@@ -276,17 +289,19 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
                 if (next(it) != customVals.end()) {
                     cout << BRIGHT_WHITE << ", " << RESET;
                 }
+
+                currentLineLength += partLength;
             }
             cout << "\n";
         }
 
-        cout << BRIGHT_WHITE << string(115, '-') << "\n" << RESET;
+        cout << BRIGHT_WHITE << string(120, '-') << "\n" << RESET;
     }
 }
 
 static void printProjects(const vector<Project>& projects) {
     if (projects.empty()) {
-        cout << BRIGHT_YELLOW << "  ⚠ No projects found.\n" << RESET;
+        cout << BRIGHT_RED << "  ⚠ No projects found.\n" << RESET;
         return;
     }
     cout << "\n  " << BOLD << BRIGHT_CYAN
@@ -378,8 +393,8 @@ static void menuAddComponent(Inventory& inv) {
     int qty = readInt("  ❖ Quantity: ");
     string mt = readMountingType();
     string loc = readString("  ❖ Storage Location: ");
-    string packageType = readOptionalString("  ❖ Package (Press Enter for '-'): ");
-    string datasheet = readOptionalString("  ❖ Datasheet URL (Press Enter for '-'): ");
+    string packageType = readDashOptional("  ❖ Package: ");
+    string datasheet = readDashOptional("  ❖ Datasheet: ");
 
     map<string, string> extraFields;
     auto fields = cat->getFields();
@@ -390,7 +405,7 @@ static void menuAddComponent(Inventory& inv) {
             size_t limit = field.find('{');
             if (limit != string::npos) displayName = field.substr(0, limit);
 
-            string val = readString("    ❖ " + displayName + ": ");
+            string val = readDashOptional("    ❖ " + displayName + ": ");
             extraFields[field] = val;
         }
     }
@@ -414,7 +429,7 @@ static void menuEditComponent(Inventory& inv) {
 
     string model = readStringOptional("  ❖ New Model", c->getModel());
     double price = readDoubleOptional("  ❖ New Price", c->getPrice(), " €");
-    string mt = readMountingTypeOptional(c->getMountingType());
+    string mt = readMountingType(c->getMountingType());
     string loc = readStringOptional("  ❖ New Storage Location", c->getStorageLocation());
     string packageType = readStringOptional("  ❖ New Package", c->getPackage());
     string datasheet = readStringOptional("  ❖ New Datasheet URL", c->getDatasheet());
@@ -773,8 +788,9 @@ int main() {
         "2. Categories",
         "3. Projects",
         "4. Stock Management",
-        "5. Destroy The Vault",
-        "6. Exit"
+        "5. Compare Components",
+        "6. Destroy The Vault",
+        "7. Exit"
     };
 
     while (true) {
@@ -785,8 +801,25 @@ int main() {
             case 1: menuCategoriesMenu(inv); break;
             case 2: menuProjectsMenu(inv); break;
             case 3: menuStock(inv); break;
-            case 4: confirmDrop(inv); break;
-            case 5:
+            case 4: {
+                int id1 = promptComponent(inv, "First Component");
+                if (id1 == -1) break;
+
+                int id2 = promptComponent(inv, "Second Component");
+                if (id2 == -1) break;
+
+                printHeader("Compare Components");
+                try {
+                    inv.compareComponents(id1, id2);
+                }
+                catch (const exception& e) {
+                    cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+                }
+                pauseScreen();
+                break;
+            }
+            case 5: confirmDrop(inv); break;
+            case 6:
                 inv.saveToFile();
                 clearScreen();
                 cout << BRIGHT_GREEN << BOLD << "\n  ✔ Data saved. Thank you for using TheVault.HW\n\n" << RESET;

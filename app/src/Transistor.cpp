@@ -52,15 +52,17 @@ string Transistor::getData() const {
 }
 
 vector<string> Transistor::getFields() const {
-    return {"Type (NPN/PNP/MOSFET)", "Max Vce/Vds{V}", "Max Ic/Id{A}", "Max Power Dissipation{W}", "hFE/hFS{Gain}"};
+    return {"Type(NPN/PNP/P~N-MOS)", "Max Ic/Id{A}", "Vbe/Vth{V}", "Power Dissipation{W}", "Beta(hFE)", "Alfa"};
 }
 
 void Transistor::setTransistorType(const string& transistorType) {
-    if (transistorType != "NPN" && transistorType != "PNP")
-        throw invalid_argument("Transistor type must be NPN or PNP!");
+    if (transistorType != "NPN" && transistorType != "PNP" &&
+        transistorType != "NMOS" && transistorType != "PMOS" &&
+        transistorType != "-") {
+        throw invalid_argument("Transistor type must be NPN, PNP, NMOS, or PMOS!");
+    }
     this->transistorType = transistorType;
 }
-
 
 void Transistor::setMaxCurrent(double maxCurrent) {
     if (maxCurrent < 0) throw invalid_argument("Max current cannot be negative!");

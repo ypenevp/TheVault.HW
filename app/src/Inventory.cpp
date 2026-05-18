@@ -329,6 +329,148 @@ void Inventory::printDistribution(int componentId) const
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+void Inventory::compareComponents(int id1, int id2) const
+{
+    const Component *c1 = getComponentById(id1);
+    const Component *c2 = getComponentById(id2);
+
+    cout << "\n"
+         << C_BOLD << C_CYAN
+         << left << " " << setw(20) << "Field"
+         << " | " << setw(30) << ("Component 1 (ID: " + to_string(c1->getId()) + ")")
+         << " | " << setw(30) << ("Component 2 (ID: " + to_string(c2->getId()) + ")")
+         << "\n"
+         << C_RESET;
+
+    cout << C_WHITE << string(88, '-') << C_RESET << "\n";
+
+    auto printRow = [&](const string &field,
+                        const string &val1,
+                        const string &val2,
+                        const string &vCol)
+    {
+        cout << C_BOLD << C_CYAN
+             << " " << left << setw(20) << field
+             << C_RESET << " | "
+
+             << vCol << left << setw(30) << val1
+             << C_RESET << " | "
+
+             << vCol << left << setw(30) << val2
+             << C_RESET << "\n";
+    };
+
+    printRow("Model",
+             c1->getModel(),
+             c2->getModel(),
+             C_WHITE);
+
+    ostringstream p1, p2;
+
+    p1 << fixed << setprecision(2)
+       << c1->getPrice() << " \xE2\x82\xAC";
+
+    p2 << fixed << setprecision(2)
+       << c2->getPrice() << " \xE2\x82\xAC";
+
+    // for € (with 2 more " ")
+    cout << C_BOLD << C_CYAN 
+         << " " << left << setw(20) << "Price"
+         << C_RESET << " | "
+
+         << "\033[38;5;46m"
+         << left << setw(32) << p1.str()
+         << C_RESET << " | "
+
+         << "\033[38;5;46m"
+         << left << setw(30) << p2.str()
+         << C_RESET << "\n";
+
+    printRow("Category",
+             (c1->getCategory() ? c1->getCategory()->getName() : "-"),
+             (c2->getCategory() ? c2->getCategory()->getName() : "-"),
+             C_WHITE);
+
+    printRow("Quantity (Total)",
+             to_string(c1->getQuantity()),
+             to_string(c2->getQuantity()),
+             C_WHITE);
+
+    printRow("Quantity (Free)",
+             to_string(getFreeQuantity(c1->getId())),
+             to_string(getFreeQuantity(c2->getId())),
+             C_WHITE);
+
+    printRow("Mounting",
+             c1->getMountingType(),
+             c2->getMountingType(),
+             C_WHITE);
+
+    printRow("Package",
+             c1->getPackage(),
+             c2->getPackage(),
+             C_WHITE);
+
+    set<string> keys;
+
+    for (const auto &kv : c1->getCustomValues())
+        keys.insert(kv.first);
+
+    for (const auto &kv : c2->getCustomValues())
+        keys.insert(kv.first);
+
+    if (!keys.empty())
+    {
+
+        cout << C_WHITE << string(88, '-') << C_RESET << "\n";
+
+        cout << " "
+             << C_BOLD << C_MAG
+             << "--- Specification Details ---"
+             << C_RESET << "\n";
+
+        for (const auto &key : keys)
+        {
+
+            string rawKey = key;
+            string unit = "";
+
+            size_t s = rawKey.find('{');
+            size_t e = rawKey.find('}');
+
+            if (s != string::npos &&
+                e != string::npos &&
+                e > s)
+            {
+
+                unit = " " + rawKey.substr(s + 1, e - s - 1);
+                rawKey = rawKey.substr(0, s);
+            }
+
+            auto it1 = c1->getCustomValues().find(key);
+            auto it2 = c2->getCustomValues().find(key);
+
+            string v1 =
+                (it1 != c1->getCustomValues().end())
+                    ? (it1->second + unit)
+                    : "-";
+
+            string v2 =
+                (it2 != c2->getCustomValues().end())
+                    ? (it2->second + unit)
+                    : "-";
+
+            printRow(rawKey, v1, v2, C_ORANGE);
+        }
+    }
+
+    cout << C_WHITE
+         << string(88, '-')
+         << C_RESET << "\n";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
 void Inventory::saveToFile() const
 {
     //Save categories

@@ -65,6 +65,8 @@ public:
     int getFreeQuantity(int componentId) const;
     void printDistribution(int componentId) const;
 
+    void compareComponents(int id1, int id2) const;
+
     void saveToFile() const;
     void loadFromFile();
     void clearAll();

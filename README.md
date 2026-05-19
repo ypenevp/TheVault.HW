@@ -4,7 +4,8 @@
 [![Build](https://img.shields.io/badge/build-CMake-brightgreen.svg)](https://cmake.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The Vault.HW** is a **CLI-based** hardware inventory management system designed for **organizing and tracking** electronic **components** across personal **projects**.  
+
+> The Vault.HW is a **CLI-based** hardware inventory management system designed for **organizing and tracking** electronic **components** across personal **projects**.  
 It allows users to manage components, categories, and projects, monitor **stock availability**, allocate parts to active builds, **compare component specifications**, and generate project component **reports** — all through a fast and efficient console interface.
 ---
 
@@ -87,7 +88,7 @@ The application uses an arrow-key driven menu. Use the **Up** and **Down** arrow
 <p align="center">
   <img src="docs/demo_mainMenu.png" width="32%">
   <img src="docs/demo_projectsMenu.png" width="32%">
-  <img src="docs/demo_СаtegoriesMenu.png" width="32%">
+  <img src="docs/demo_CategoriesMenu.png" width="32%">
 </p>
 
 ---

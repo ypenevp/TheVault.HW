@@ -1,8 +1,8 @@
-#include "Inventory.h"
-#include "Resistor.h"
-#include "Transistor.h"
-#include "Diode.h"
-#include "CustomCategory.h"
+#include "include/Inventory.h"
+#include "include/Resistor.h"
+#include "include/Transistor.h"
+#include "include/Diode.h"
+#include "include/CustomCategory.h"
 #include <stdexcept>
 #include <algorithm>
 #include <iostream>

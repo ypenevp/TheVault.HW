@@ -1,4 +1,4 @@
-#include "Component.h"
+#include "include/Component.h"
 
 Component::Component(int id, const std::string &model, double price, int quantity,
                      const std::string &mountingType, const std::string &storageLocation,

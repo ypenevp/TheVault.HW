@@ -1,8 +1,8 @@
-#include "Inventory.h"
-#include "Resistor.h"
-#include "Transistor.h"
-#include "Diode.h"
-#include "CustomCategory.h"
+#include "include/Inventory.h"
+#include "include/Resistor.h"
+#include "include/Transistor.h"
+#include "include/Diode.h"
+#include "include/CustomCategory.h"
 #include <iostream>
 #include <iomanip>
 #include <limits>
@@ -742,7 +742,7 @@ static void confirmDrop(Inventory& inv) {
         cin >> confirm;
 
         if (confirm == "delete") {
-            string dbPath = "../db/";
+            string dbPath = "db/";
             vector<string> filesToDelete = {
                 "components.txt",
                 "categories.txt",
@@ -781,7 +781,7 @@ static void confirmDrop(Inventory& inv) {
 int main() {
     enableANSI();
 
-    Inventory inv("../db/", "../exports/");
+    Inventory inv("db/", "exports/");
 
     vector<string> mainMenu = {
         "1. Components",

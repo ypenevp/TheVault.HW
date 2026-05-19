@@ -24,8 +24,8 @@ private:
     int getAllocatedQuantity(int componentId) const;
 
 public:
-    Inventory(const string& dbPath = "../db/",
-              const string& exportsPath = "../exports/");
+    Inventory(const string& dbPath = "db/",
+              const string& exportsPath = "exports/");
     Inventory(const Inventory&) = delete;
     Inventory& operator=(const Inventory&) = delete;
 

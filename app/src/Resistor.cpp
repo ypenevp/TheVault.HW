@@ -1,4 +1,4 @@
-#include "Resistor.h"
+#include "include/Resistor.h"
 #include <stdexcept>
 #include <sstream>
 using namespace std;

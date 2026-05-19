@@ -1,4 +1,4 @@
-#include "include/Diode.h"
+#include "Diode.h"
 #include <stdexcept>
 #include <sstream>
 using namespace std;

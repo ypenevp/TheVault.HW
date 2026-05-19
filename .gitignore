@@ -4,5 +4,8 @@
 *.o
 *.out
 *.exe
+*.pdb
+app/build/*
+
 app/db/*.txt
 app/exports/*.txt

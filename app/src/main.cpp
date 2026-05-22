@@ -280,11 +280,22 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
                     currentLineLength = 19;
                 }
 
-                cout << BRIGHT_WHITE << key << ": " << BRIGHT_ORANGE << value;
+
+                // add measurement units modifier
+                cout << BRIGHT_WHITE << key << ": " << BRIGHT_ORANGE;
+                string modifier = "";
+                if (!value.empty() && isalpha(value.back()) && value.length() > 1 && isdigit(value[value.length() - 2])) {
+                    modifier = value.back();
+                    value.pop_back();
+                }
+                cout << value;
                 if (!unit.empty()) {
-                    cout << " " << unit;
+                    cout << " " << modifier << unit;
+                } else if (!modifier.empty()) {
+                    cout << modifier;
                 }
                 cout << RESET;
+
 
                 if (next(it) != customVals.end()) {
                     cout << BRIGHT_WHITE << ", " << RESET;

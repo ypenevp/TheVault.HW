@@ -72,6 +72,8 @@ public:
     vector<Component*> searchByLocation(const string& location) const;
     vector<Component*> searchByPriceRange(double minPrice, double maxPrice) const;
 
+    void generateTXT(int projectId) const;
+
     void saveToFile() const;
     void loadFromFile();
     void clearAll();

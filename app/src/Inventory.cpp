@@ -9,6 +9,7 @@
 #include <fstream>
 #include <sstream>
 #include <iomanip>
+#include <ctime>
 #include <set>
 using namespace std;
 
@@ -509,6 +510,64 @@ vector<Component *> Inventory::searchByPriceRange(double minPrice, double maxPri
         if (c->getPrice() >= minPrice && c->getPrice() <= maxPrice)
             results.push_back(c);
     return results;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void Inventory::generateTXT(int projectId) const {
+    const Project *project = getProjectById(projectId);
+    if (!project) throw invalid_argument("Project not found.");
+
+    string filename = this->exportsPath + "BOM_" + project->getName() + ".txt";
+    replace(filename.begin(), filename.end(), ' ', '_');
+
+    ofstream file(filename);
+    if (!file.is_open())
+        throw runtime_error("Failed to open export file: " + filename);
+
+    time_t now = time(0);
+    char* dt = ctime(&now);
+
+    file << "=================================================================================================\n";
+    file << "                                      BILL OF MATERIALS                                          \n";
+    file << "=================================================================================================\n";
+    file << " Project     : " << project->getName() << "\n";
+    file << " Start Date  : " << project->getStartDate() << "\n";
+    file << " Description : " << project->getDescription() << "\n";
+    file << " Generated   : " << dt;
+    file << "=================================================================================================\n";
+    file << left << " " << setw(23) << "Model"
+         << setw(16) << "Category"
+         << setw(18) << "Location"
+         << setw(8)  << "Qty"
+         << setw(17) << "Unit Price(€)"
+         << setw(14) << "Total(€)" << "\n";
+    file << "-------------------------------------------------------------------------------------------------\n";
+
+    double grandTotal = 0.0;
+    for (const auto &uc : project->getComponents()) {
+        Component *comp = uc.getComponent();
+        double lineTotal = comp->getPrice() * uc.getAllocatedQuantity();
+        grandTotal += lineTotal;
+
+        const Category *cat = comp->getCategory();
+        string catName = cat ? cat->getName() : "Unknown";
+
+        file << left << " " << setw(23) << comp->getModel()
+             << setw(16) << catName
+             << setw(18) << comp->getStorageLocation()
+             << setw(8) << uc.getAllocatedQuantity()
+             << fixed << setprecision(2)
+             << setw(16) << comp->getPrice()
+             << setw(14) << lineTotal << "\n";
+    }
+
+    file << "-------------------------------------------------------------------------------------------------\n";
+    file << right << setw(82) << "Grand Total: " << fixed << setprecision(2) << grandTotal << " €\n";
+    file << "=================================================================================================\n";
+
+    file.close();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

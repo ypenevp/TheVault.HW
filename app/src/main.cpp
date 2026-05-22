@@ -595,7 +595,14 @@ static void menuAddProject(Inventory& inv) {
     printHeader("Add Project");
     string name = readString("  ❖ Project Name: ");
     string desc = readString("  ❖ Description: ");
-    string date = readString("  ❖ Start Date (YYYY-MM-DD): ");
+
+    time_t t = time(nullptr);
+    tm* now = localtime(&t);
+    char buffer[11];
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d", now);
+    string date = buffer;
+
+    cout << BRIGHT_CYAN << "  ❖ Start Date automatically set to: " << BRIGHT_WHITE << date << "\n" << RESET;
 
     try {
         inv.addProject(name, desc, date);
@@ -660,7 +667,8 @@ static void menuProjectsMenu(Inventory& inv) {
         "4. Edit Project",
         "5. Add Component to Project",
         "6. Remove Project",
-        "7. Back"
+        "7. Generate BOM",
+        "8. Back"
     };
 
     while (true) {
@@ -706,7 +714,20 @@ static void menuProjectsMenu(Inventory& inv) {
                 pauseScreen();
                 break;
             }
-            case 6: return;
+            case 6: {
+                int id = promptProject(inv, "Select Project to export BOM");
+                if (id == -1) break;
+
+                try {
+                    inv.generateTXT(id);
+                    cout << BRIGHT_GREEN << BOLD << "\n  ✔ BOM file successfully generated in exports/ folder.\n" << RESET;
+                } catch (const exception& e) {
+                    cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+                }
+                pauseScreen();
+                break;
+            }
+            case 7: return;
         }
     }
 }
@@ -862,8 +883,9 @@ int main() {
         "4. Search Components",
         "5. Stock Management",
         "6. Compare Components",
-        "7. Destroy The Vault",
-        "8. Exit"
+        "7. Generate Project BOM",
+        "8. Destroy The Vault",
+        "9. Exit"
     };
 
     while (true) {
@@ -892,8 +914,21 @@ int main() {
                 pauseScreen();
                 break;
             }
-            case 6: confirmDrop(inv); break;
-            case 7:
+            case 6: {
+                int id = promptProject(inv, "Select Project to export BOM");
+                if (id == -1) break;
+
+                try {
+                    inv.generateTXT(id);
+                    cout << BRIGHT_GREEN << BOLD << "\n  ✔ BOM file successfully generated in exports/ folder.\n" << RESET;
+                } catch (const exception& e) {
+                    cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+                }
+                pauseScreen();
+                break;
+            }
+            case 7: confirmDrop(inv); break;
+            case 8:
                 inv.saveToFile();
                 clearScreen();
                 cout << BRIGHT_GREEN << BOLD << "\n  ✔ Data saved. Thank you for using TheVault.HW\n\n" << RESET;

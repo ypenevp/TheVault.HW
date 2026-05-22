@@ -67,6 +67,11 @@ public:
 
     void compareComponents(int id1, int id2) const;
 
+    vector<Component*> searchByName(const string& name) const;
+    vector<Component*> searchByCategory(int categoryId) const;
+    vector<Component*> searchByLocation(const string& location) const;
+    vector<Component*> searchByPriceRange(double minPrice, double maxPrice) const;
+
     void saveToFile() const;
     void loadFromFile();
     void clearAll();

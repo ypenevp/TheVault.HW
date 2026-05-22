@@ -45,12 +45,6 @@ The-Vault-HW/
  
 ---
 
-## Class Diagram
-
-![Class Diagram](docs/ClassDiagram_v2.png)
- 
----
-
 ## Build Instructions
 
 ### Prerequisites

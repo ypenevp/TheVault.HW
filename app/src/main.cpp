@@ -726,6 +726,67 @@ static void menuStock(Inventory& inv) {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////
+
+static void menuSearchMenu(Inventory& inv) {
+    vector<string> searchOptions = {
+        "1. Search by Model",
+        "2. Search by Category",
+        "3. Search by Location",
+        "4. Search by Price Range",
+        "5. Back"
+    };
+
+    while (true) {
+        int choice = selectFromMenu(searchOptions, "TheVault.HW - Search Components");
+
+        switch (choice) {
+            case 0: {
+                printHeader("Search by Model");
+                string name = readString("  ❖ Enter model: ");
+                vector<Component*> results = inv.searchByName(name);
+                printComponents(results, inv);
+                pauseScreen();
+                break;
+            }
+            case 1: {
+                int id = promptCategory(inv, "Select Category to Search");
+                if (id == -1) break;
+
+                printHeader("Search by Category");
+                vector<Component*> results = inv.searchByCategory(id);
+                printComponents(results, inv);
+                pauseScreen();
+                break;
+            }
+            case 2: {
+                printHeader("Search by Location");
+                string loc = readString("  ❖ Enter location: ");
+                vector<Component*> results = inv.searchByLocation(loc);
+                printComponents(results, inv);
+                pauseScreen();
+                break;
+            }
+            case 3: {
+                printHeader("Search by Price Range");
+                double minP = readDouble("  ❖ Enter min price: ");
+                double maxP = readDouble("  ❖ Enter max price: ");
+                try {
+                    vector<Component*> results = inv.searchByPriceRange(minP, maxP);
+                    printComponents(results, inv);
+                } catch(const exception& e) {
+                    cout << BRIGHT_RED  << e.what() << "\n" << RESET;
+                }
+                pauseScreen();
+                break;
+            }
+            case 4: return;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
 static void confirmDrop(Inventory& inv) {
     vector<string> options = {
         "Back",
@@ -787,10 +848,11 @@ int main() {
         "1. Components",
         "2. Categories",
         "3. Projects",
-        "4. Stock Management",
-        "5. Compare Components",
-        "6. Destroy The Vault",
-        "7. Exit"
+        "4. Search Components",
+        "5. Stock Management",
+        "6. Compare Components",
+        "7. Destroy The Vault",
+        "8. Exit"
     };
 
     while (true) {
@@ -800,8 +862,9 @@ int main() {
             case 0: menuComponentsMenu(inv); break;
             case 1: menuCategoriesMenu(inv); break;
             case 2: menuProjectsMenu(inv); break;
-            case 3: menuStock(inv); break;
-            case 4: {
+            case 3: menuSearchMenu(inv); break;
+            case 4: menuStock(inv); break;
+            case 5: {
                 int id1 = promptComponent(inv, "First Component");
                 if (id1 == -1) break;
 
@@ -818,8 +881,8 @@ int main() {
                 pauseScreen();
                 break;
             }
-            case 5: confirmDrop(inv); break;
-            case 6:
+            case 6: confirmDrop(inv); break;
+            case 7:
                 inv.saveToFile();
                 clearScreen();
                 cout << BRIGHT_GREEN << BOLD << "\n  ✔ Data saved. Thank you for using TheVault.HW\n\n" << RESET;

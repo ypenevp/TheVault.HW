@@ -471,6 +471,48 @@ void Inventory::compareComponents(int id1, int id2) const
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+vector<Component *> Inventory::searchByName(const string &name) const {
+    vector<Component *> results;
+    string lowerName = name;
+    transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+
+    for (auto *c : this->components) {
+        string lowerModel = c->getModel();
+        transform(lowerModel.begin(), lowerModel.end(), lowerModel.begin(), ::tolower);
+        if (lowerModel.find(lowerName) != string::npos)
+            results.push_back(c);
+    }
+    return results;
+}
+
+vector<Component *> Inventory::searchByCategory(int categoryId) const {
+    vector<Component *> results;
+    for (auto *c : this->components)
+        if (c->getCategory() && c->getCategory()->getId() == categoryId)
+            results.push_back(c);
+    return results;
+}
+
+vector<Component *> Inventory::searchByLocation(const string &location) const {
+    vector<Component *> results;
+    for (auto *c : this->components)
+        if (c->getStorageLocation() == location)
+            results.push_back(c);
+    return results;
+}
+
+vector<Component *> Inventory::searchByPriceRange(double minPrice, double maxPrice) const {
+    if (minPrice > maxPrice)
+        throw invalid_argument("Min price cannot exceed max price!!!");
+    vector<Component *> results;
+    for (auto *c : this->components)
+        if (c->getPrice() >= minPrice && c->getPrice() <= maxPrice)
+            results.push_back(c);
+    return results;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
 void Inventory::saveToFile() const
 {
     //Save categories

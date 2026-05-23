@@ -40,15 +40,17 @@ Inventory::~Inventory()
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-const string C_RESET = "\033[0m";
-const string C_BOLD = "\033[1m";
-const string C_CYAN = "\033[96m";
-const string C_YELLOW = "\033[38;5;226m";
-const string C_ORANGE = "\033[38;5;208m";
-const string C_GREEN = "\033[38;5;46m";
-const string C_WHITE = "\033[97m";
-const string C_RED = "\033[91m";
-const string C_MAG = "\033[95m";
+#define C_RESET     "\033[0m"
+#define C_BOLD      "\033[1m"
+#define C_CYAN      "\033[96m"
+#define C_WHITE     "\033[97m"
+#define C_RED       "\033[91m"
+#define C_MAG       "\033[95m"
+#define C_GREEN     "\033[38;5;46m"
+#define C_YELLOW    "\033[38;5;226m"
+#define C_ORANGE    "\033[38;5;208m"
+#define C_DEEP_RED  "\033[38;5;196m"
+#define C_TEAL      "\033[38;2;0;255;230m"
 
 int Inventory::getAllocatedQuantity(int componentId) const
 {
@@ -407,11 +409,55 @@ void Inventory::compareComponents(int id1, int id2) const
              c2->getMountingType(),
              C_WHITE);
 
+    printRow("Location",
+             c1->getStorageLocation(),
+             c2->getStorageLocation(),
+             C_WHITE);
+
     printRow("Package",
              c1->getPackage(),
              c2->getPackage(),
              C_WHITE);
 
+    string ds1 = c1->getDatasheet();
+    string ds2 = c2->getDatasheet();
+
+    cout << C_BOLD << C_CYAN
+         << " " << left << setw(20) << "Datasheet"
+         << C_RESET << " | ";
+
+    if (ds1 != "-") {
+        string visible = "link";
+
+        cout << "\033[38;5;33m"
+             << "\033]8;;" << ds1 << "\033\\"
+             << visible
+             << "\033]8;;\033\\"
+             << C_RESET;
+
+        cout << string(30 - visible.length(), ' ');
+    } else {
+        cout << left << setw(30) << "-";
+    }
+
+    cout << " | ";
+
+    if (ds2 != "-") {
+        string visible = "link";
+
+        cout << "\033[38;5;33m"
+             << "\033]8;;" << ds2 << "\033\\"
+             << visible
+             << "\033]8;;\033\\"
+             << C_RESET;
+
+        cout << string(30 - visible.length(), ' ');
+    } else {
+        cout << left << setw(30) << "-";
+    }
+
+    cout << "\n";
+    
     set<string> keys;
 
     for (const auto &kv : c1->getCustomValues())
@@ -432,34 +478,51 @@ void Inventory::compareComponents(int id1, int id2) const
 
         for (const auto &key : keys)
         {
-
             string rawKey = key;
             string unit = "";
 
             size_t s = rawKey.find('{');
             size_t e = rawKey.find('}');
 
-            if (s != string::npos &&
-                e != string::npos &&
-                e > s)
-            {
-
-                unit = " " + rawKey.substr(s + 1, e - s - 1);
+            if (s != string::npos && e != string::npos && e > s) {
+                unit = rawKey.substr(s + 1, e - s - 1);
                 rawKey = rawKey.substr(0, s);
             }
 
             auto it1 = c1->getCustomValues().find(key);
             auto it2 = c2->getCustomValues().find(key);
 
-            string v1 =
-                (it1 != c1->getCustomValues().end())
-                    ? (it1->second + unit)
-                    : "-";
+            string v1 = "-";
+            if (it1 != c1->getCustomValues().end()) {
+                string value = it1->second;
+                string modifier = "";
+                if (!value.empty() && isalpha(value.back()) && value.length() > 1 && isdigit(value[value.length() - 2])) {
+                    modifier = value.back();
+                    value.pop_back();
+                }
+                v1 = value;
+                if (!unit.empty()) {
+                    v1 += " " + modifier + unit;
+                } else if (!modifier.empty()) {
+                    v1 += modifier;
+                }
+            }
 
-            string v2 =
-                (it2 != c2->getCustomValues().end())
-                    ? (it2->second + unit)
-                    : "-";
+            string v2 = "-";
+            if (it2 != c2->getCustomValues().end()) {
+                string value = it2->second;
+                string modifier = "";
+                if (!value.empty() && isalpha(value.back()) && value.length() > 1 && isdigit(value[value.length() - 2])) {
+                    modifier = value.back();
+                    value.pop_back();
+                }
+                v2 = value;
+                if (!unit.empty()) {
+                    v2 += " " + modifier + unit;
+                } else if (!modifier.empty()) {
+                    v2 += modifier;
+                }
+            }
 
             printRow(rawKey, v1, v2, C_ORANGE);
         }
@@ -512,6 +575,20 @@ vector<Component *> Inventory::searchByPriceRange(double minPrice, double maxPri
     return results;
 }
 
+Component* Inventory::searchByExactName(const string &name) const {
+    string lowerName = name;
+    transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+
+    for (auto *c : this->components) {
+        string lowerModel = c->getModel();
+        transform(lowerModel.begin(), lowerModel.end(), lowerModel.begin(), ::tolower);
+        if (lowerModel == lowerName) {
+            return c;
+        }
+    }
+    return nullptr;
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -526,16 +603,12 @@ void Inventory::generateTXT(int projectId) const {
     if (!file.is_open())
         throw runtime_error("Failed to open export file: " + filename);
 
-    time_t now = time(0);
-    char* dt = ctime(&now);
-
     file << "=================================================================================================\n";
     file << "                                      BILL OF MATERIALS                                          \n";
     file << "=================================================================================================\n";
     file << " Project     : " << project->getName() << "\n";
     file << " Start Date  : " << project->getStartDate() << "\n";
     file << " Description : " << project->getDescription() << "\n";
-    file << " Generated   : " << dt;
     file << "=================================================================================================\n";
     file << left << " " << setw(23) << "Model"
          << setw(16) << "Category"
@@ -568,6 +641,232 @@ void Inventory::generateTXT(int projectId) const {
     file << "=================================================================================================\n";
 
     file.close();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+static void padColumn(const std::string& text, std::size_t width) {
+    std::cout << text;
+    if (text.size() < width)
+        std::cout << std::string(width - text.size(), ' ');
+}
+
+void Inventory::importBOM(const std::string& filename) const {
+    std::ifstream file(filename);
+
+    if (!file.is_open())
+        throw std::runtime_error("Failed to open BOM file: " + filename);
+
+    struct BOMItem {
+        std::string reference;
+        int quantity = 0;
+        std::string value;
+        std::string footprint;
+        std::vector<std::string> extraFields;
+    };
+
+    const int VALUE_WIDTH     = 24;
+    const int QUANTITY_WIDTH  = 10;
+    const int REFERENCE_WIDTH = 22;
+    const int EXTRA_WIDTH     = 24;
+    const int FOOTPRINT_WIDTH = 40;
+
+    std::vector<BOMItem> items;
+    std::vector<std::string> headers;
+    std::vector<int> extraColumnIndexes;
+
+    int referenceIndex = 0;
+    int quantityIndex  = 1;
+    int valueIndex     = 2;
+    int footprintIndex = 3;
+
+    bool isHeaderRow = true;
+    std::string line;
+
+    while (std::getline(file, line)) {
+        if (line.empty())
+            continue;
+
+        std::vector<std::string> cells;
+        std::string currentCell;
+        bool insideQuotes = false;
+
+        for (char ch : line) {
+            if (ch == '"') {
+                insideQuotes = !insideQuotes;
+            } else if (ch == ';' && !insideQuotes) {
+                cells.push_back(currentCell);
+                currentCell.clear();
+            } else {
+                currentCell += ch;
+            }
+        }
+        cells.push_back(currentCell);
+
+        for (std::string& cell : cells) {
+            if (cell.size() >= 2 && cell.front() == '"' && cell.back() == '"')
+                cell = cell.substr(1, cell.size() - 2);
+        }
+
+        if (isHeaderRow) {
+            headers = cells;
+
+            for (int i = 0; i < static_cast<int>(cells.size()); ++i) {
+                std::string header = cells[i];
+                std::transform(header.begin(), header.end(), header.begin(),
+                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+                if (header == "reference" || header == "ref" || header == "designator")
+                    referenceIndex = i;
+                else if (header == "qty" || header == "quantity")
+                    quantityIndex = i;
+                else if (header == "value" || header == "model" || header == "name" || header == "part number")
+                    valueIndex = i;
+                else if (header == "footprint")
+                    footprintIndex = i;
+            }
+
+            for (int i = 0; i < static_cast<int>(cells.size()); ++i) {
+                if (i != referenceIndex && i != quantityIndex &&
+                    i != valueIndex    && i != footprintIndex)
+                    extraColumnIndexes.push_back(i);
+            }
+
+            isHeaderRow = false;
+            continue;
+        }
+
+        BOMItem item;
+        item.reference = (referenceIndex < static_cast<int>(cells.size())) ? cells[referenceIndex] : "-";
+
+        const std::string quantityText = (quantityIndex < static_cast<int>(cells.size())) ? cells[quantityIndex] : "0";
+        try { item.quantity = std::stoi(quantityText); } catch (...) { item.quantity = 0; }
+
+        item.value     = (valueIndex     < static_cast<int>(cells.size())) ? cells[valueIndex]     : "-";
+        item.footprint = (footprintIndex < static_cast<int>(cells.size())) ? cells[footprintIndex] : "-";
+
+        for (int index : extraColumnIndexes)
+            item.extraFields.push_back(index < static_cast<int>(cells.size()) ? cells[index] : "-");
+
+        items.push_back(item);
+    }
+
+    std::vector<bool> extraColumnHasLink(extraColumnIndexes.size(), false);
+    std::vector<std::size_t> extraColumnWidths(extraColumnIndexes.size(), EXTRA_WIDTH);
+
+    for (const BOMItem& item : items) {
+        for (std::size_t i = 0; i < item.extraFields.size(); ++i) {
+            const std::string& field = item.extraFields[i];
+            if (field.rfind("http://", 0) == 0 || field.rfind("https://", 0) == 0)
+                extraColumnHasLink[i] = true;
+        }
+    }
+
+    for (std::size_t i = 0; i < extraColumnIndexes.size(); ++i) {
+        const std::string& header = headers[extraColumnIndexes[i]];
+        extraColumnWidths[i] = extraColumnHasLink[i]
+            ? std::max<std::size_t>(header.size(), 4)
+            : EXTRA_WIDTH;
+    }
+
+    std::cout << "\n" << C_BOLD << C_CYAN << "  ▐▓█▓▌ IMPORTED BOM ANALYSIS\n" << C_RESET;
+    std::cout << C_WHITE << std::string(170, '^') << "\n" << C_RESET;
+    std::cout << C_BOLD << C_CYAN << std::left;
+
+    std::cout << " "; padColumn("Value / Model", VALUE_WIDTH);
+    std::cout << " | "; padColumn("Quantity",  QUANTITY_WIDTH);
+    std::cout << " | "; padColumn("Reference", REFERENCE_WIDTH);
+
+    for (std::size_t i = 0; i < extraColumnIndexes.size(); ++i) {
+        std::cout << " | ";
+        padColumn(headers[extraColumnIndexes[i]], extraColumnWidths[i]);
+    }
+
+    std::cout << " | "; padColumn("Footprint", FOOTPRINT_WIDTH);
+    std::cout << "\n" << C_RESET;
+    std::cout << C_WHITE << std::string(170, '-') << "\n" << C_RESET;
+
+    for (const BOMItem& item : items) {
+        std::cout << C_CYAN << " " << C_TEAL;
+        padColumn(item.value, VALUE_WIDTH);
+        std::cout << C_RESET << " | " << C_YELLOW;
+        padColumn(std::to_string(item.quantity), QUANTITY_WIDTH);
+        std::cout << C_RESET << " | " << C_ORANGE;
+        padColumn(item.reference, REFERENCE_WIDTH);
+        std::cout << C_RESET;
+
+        for (std::size_t i = 0; i < item.extraFields.size(); ++i) {
+            const std::string& field = item.extraFields[i];
+            const std::size_t width  = extraColumnWidths[i];
+            std::cout << " | ";
+
+            if (field.rfind("http://", 0) == 0 || field.rfind("https://", 0) == 0) {
+                std::cout << "\033]8;;" << field << "\033\\" << "link" << "\033]8;;\033\\";
+                if (4 < width)
+                    std::cout << std::string(width - 4, ' ');
+            } else {
+                padColumn(field, width);
+            }
+        }
+
+        std::cout << " | " << C_WHITE;
+        padColumn(item.footprint, FOOTPRINT_WIDTH);
+        std::cout << C_RESET << "\n";
+    }
+
+    std::cout << C_WHITE << std::string(170, '^') << "\n\n" << C_RESET;
+    std::cout << C_BOLD << C_CYAN << "  [ INVENTORY STATUS ]\n\n" << C_RESET;
+
+    std::vector<std::string> availableItems;
+    std::vector<std::string> partiallyAvailableItems;
+    std::vector<std::string> unavailableItems;
+
+    for (const BOMItem& item : items) {
+        Component* match = searchByExactName(item.value);
+
+        if (match == nullptr) {
+            unavailableItems.push_back(
+                "  ► " + item.value + " (" + item.reference + ") -> Needed: "
+                + C_DEEP_RED + std::to_string(item.quantity) + C_RESET);
+            continue;
+        }
+
+        const int freeQty = getFreeQuantity(match->getId());
+
+        if (freeQty >= item.quantity) {
+            availableItems.push_back(
+                "  ► " + item.value + " (" + item.reference + ") -> Have "
+                + C_GREEN + std::to_string(freeQty) + C_RESET
+                + " -> Located in " + match->getStorageLocation());
+        } else {
+            partiallyAvailableItems.push_back(
+                "  ► " + item.value + " (" + item.reference + ") -> Have "
+                + C_YELLOW + std::to_string(freeQty) + C_RESET
+                + " (Needed: " + C_ORANGE + std::to_string(item.quantity - freeQty) + C_RESET
+                + ") -> Located in " + match->getStorageLocation());
+        }
+    }
+
+    if (!availableItems.empty()) {
+        std::cout << C_GREEN << C_BOLD << "  ✔ FULLY AVAILABLE:\n" << C_RESET;
+        for (const std::string& entry : availableItems)
+            std::cout << C_WHITE << entry << "\n" << C_RESET;
+        std::cout << "\n";
+    }
+
+    if (!partiallyAvailableItems.empty()) {
+        std::cout << C_YELLOW << C_BOLD << "  ⚠ PARTIALLY AVAILABLE:\n" << C_RESET;
+        for (const std::string& entry : partiallyAvailableItems)
+            std::cout << C_WHITE << entry << "\n" << C_RESET;
+        std::cout << "\n";
+    }
+
+    if (!unavailableItems.empty()) {
+        std::cout << C_DEEP_RED << C_BOLD << "  ✖ UNAVAILABLE:\n" << C_RESET;
+        for (const std::string& entry : unavailableItems)
+            std::cout << C_WHITE << entry << "\n" << C_RESET;
+        std::cout << "\n";
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

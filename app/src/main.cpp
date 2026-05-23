@@ -884,55 +884,64 @@ int main() {
         "5. Stock Management",
         "6. Compare Components",
         "7. Generate Project BOM",
-        "8. Destroy The Vault",
-        "9. Exit"
+        "8. Import and analyse BOM",
+        "9. Destroy The Vault",
+        "10. Exit"
     };
 
     while (true) {
         int choice = selectFromMenu(mainMenu, "TheVault.HW - Main menu");
 
-        switch (choice) {
-            case 0: menuComponentsMenu(inv); break;
-            case 1: menuCategoriesMenu(inv); break;
-            case 2: menuProjectsMenu(inv); break;
-            case 3: menuSearchMenu(inv); break;
-            case 4: menuStock(inv); break;
-            case 5: {
-                int id1 = promptComponent(inv, "First Component");
-                if (id1 == -1) break;
+               switch (choice) {
+                   case 0: menuComponentsMenu(inv); break;
+                   case 1: menuCategoriesMenu(inv); break;
+                   case 2: menuProjectsMenu(inv); break;
+                   case 3: menuSearchMenu(inv); break;
+                   case 4: menuStock(inv); break;
+                   case 5: {
+                       int id1 = promptComponent(inv, "First Component");
+                       if (id1 == -1) break;
 
-                int id2 = promptComponent(inv, "Second Component");
-                if (id2 == -1) break;
+                       int id2 = promptComponent(inv, "Second Component");
+                       if (id2 == -1) break;
 
-                printHeader("Compare Components");
-                try {
-                    inv.compareComponents(id1, id2);
-                }
-                catch (const exception& e) {
-                    cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
-                }
-                pauseScreen();
-                break;
-            }
-            case 6: {
-                int id = promptProject(inv, "Select Project to export BOM");
-                if (id == -1) break;
+                       printHeader("Compare Components");
+                       try { inv.compareComponents(id1, id2); }
+                       catch (const exception& e) { cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET; }
+                       pauseScreen();
+                       break;
+                   }
+                   case 6: {
+                       int id = promptProject(inv, "Select Project to export BOM");
+                       if (id == -1) break;
 
-                try {
-                    inv.generateTXT(id);
-                    cout << BRIGHT_GREEN << BOLD << "\n  ✔ BOM file successfully generated in exports/ folder.\n" << RESET;
-                } catch (const exception& e) {
-                    cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
-                }
-                pauseScreen();
-                break;
-            }
-            case 7: confirmDrop(inv); break;
-            case 8:
-                inv.saveToFile();
-                clearScreen();
-                cout << BRIGHT_GREEN << BOLD << "\n  ✔ Data saved. Thank you for using TheVault.HW\n\n" << RESET;
-                return 0;
-        }
+                       try {
+                           inv.generateTXT(id);
+                           cout << BRIGHT_GREEN << BOLD << "\n  ✔ BOM file successfully generated in exports/ folder.\n" << RESET;
+                       } catch (const exception& e) {
+                           cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+                       }
+                       pauseScreen();
+                       break;
+                   }
+                   case 7: { 
+                       printHeader("Import BOM (CSV)");
+                       string path = readString("  ❖ Enter full path to CSV file: ");
+                       clearScreen();
+                       try {
+                           inv.importBOM(path);
+                       } catch (const exception& e) {
+                           cout << BRIGHT_RED << "\n  ✖ Error: " << e.what() << "\n" << RESET;
+                       }
+                       pauseScreen();
+                       break;
+                   }
+                   case 8: confirmDrop(inv); break;
+                   case 9:
+                       inv.saveToFile();
+                       clearScreen();
+                       cout << BRIGHT_GREEN << BOLD << "\n  ✔ Data saved. Thank you for using TheVault.HW\n\n" << RESET;
+                       return 0;
+               }
     }
 }

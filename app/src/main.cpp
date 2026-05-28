@@ -31,6 +31,7 @@ const string BRIGHT_GREEN   = "\033[92m";
 const string SUPER_GREEN    = "\033[38;5;46m";
 const string BRIGHT_YELLOW  = "\033[38;5;226m";
 const string BRIGHT_CYAN    = "\033[96m";
+const string TECHNO_CYAN    = "\033[38;2;0;255;255m";
 const string BRIGHT_WHITE   = "\033[97m";
 const string BRIGHT_ORANGE  = "\033[38;5;208m";
 const string BRIGHT_BLUE    = "\033[94m";
@@ -203,18 +204,19 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
     }
 
     cout << "\n" << BOLD << BRIGHT_CYAN << left
-         << " "   << setw(5)  << "ID"
+         << " "   << setw(4)  << "ID" // 5
          << " | " << setw(18) << "Model"
-         << " | " << setw(12) << "Category"
+         << " | " << setw(13) << "Category" // 12
          << " | " << setw(8)  << "Price"
          << " | " << setw(5)  << "Total"
          << " | " << setw(5)  << "Free"
          << " | " << setw(10) << "Datasheet"
          << " | " << setw(7)  << "Mount"
          << " | " << setw(10) << "Package"
-         << " | " << setw(15) << "Location" << "\n" << RESET;
+         << " | " << setw(10) << "Location" //15
+         << " | " << setw(17) << "Manufacturer PN" << "\n" << RESET; // 12
 
-    cout << BRIGHT_WHITE << string(120, '-') << "\n" << RESET;
+    cout << BRIGHT_WHITE << string(138, '-') << "\n" << RESET; // 135
 
     for (const auto* c : comps) {
         int freeQty = inv.getFreeQuantity(c->getId());
@@ -233,9 +235,9 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
         ss << fixed << setprecision(2) << c->getPrice() << " €";
 
         cout << " "
-             << BOLD << SUPER_GREEN << left << setw(5) << c->getId() << RESET << " | "
+             << BOLD << SUPER_GREEN << left << setw(4) << c->getId() << RESET << " | " // 5
              << BRIGHT_WHITE << left << setw(18) << c->getModel() << RESET << " | "
-             << BOLD << BRIGHT_YELLOW << left << setw(12) << catName << RESET << " | "
+             << BOLD << BRIGHT_YELLOW << left << setw(13) << catName << RESET << " | " // 12
              << BOLD << SUPER_GREEN << left << setw(10) << ss.str() << RESET << " | "
              << BRIGHT_WHITE << left << setw(5) << totQty << RESET << " | "
              << BOLD << SUPER_GREEN << left << setw(5) << freeQty << RESET << " | ";
@@ -248,7 +250,15 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
 
         cout << BRIGHT_WHITE << left << setw(7) << c->getMountingType() << RESET << " | "
              << BRIGHT_WHITE << left << setw(10) << pkg << RESET << " | "
-             << BRIGHT_WHITE << left << setw(15) << c->getStorageLocation() << RESET << "\n";
+             << BOLD << TECHNO_CYAN << left << setw(10) << c->getStorageLocation() << RESET << " | "; // 12
+
+        // show first 12 symbols of MPN then ..
+        string mpn = c->getManufacturerPN();
+        if (mpn.empty()) mpn = "-";
+        if (mpn.length() > 17) { // 12
+            mpn = mpn.substr(0, 15) + ".."; // 10
+        }
+        cout << BRIGHT_WHITE << left << setw(17) << mpn << RESET << "\n"; // 12
 
         auto customVals = c->getCustomValues();
         if (!customVals.empty()) {
@@ -306,7 +316,7 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
             cout << "\n";
         }
 
-        cout << BRIGHT_WHITE << string(120, '-') << "\n" << RESET;
+        cout << BRIGHT_WHITE << string(138, '-') << "\n" << RESET; // 120
     }
 }
 
@@ -427,6 +437,7 @@ static void menuAddComponent(Inventory& inv) {
     string loc = readString("  ❖ Storage Location: ");
     string packageType = readDashOptional("  ❖ Package: ");
     string datasheet = readDashOptional("  ❖ Datasheet: ");
+    string mpn = readDashOptional("  ❖ Manufacturer PN: ");
 
     map<string, string> extraFields;
     auto fields = cat->getFields();
@@ -443,7 +454,7 @@ static void menuAddComponent(Inventory& inv) {
     }
 
     try {
-        inv.addComponent(model, price, qty, mt, loc, packageType, datasheet, cat, extraFields);
+        inv.addComponent(model, price, qty, mt, loc, packageType, datasheet, cat, mpn,  extraFields);
         cout << BRIGHT_GREEN << BOLD << "\n  ✔ Component added successfully.\n" << RESET;
     } catch (const exception& e) {
         cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
@@ -482,6 +493,7 @@ static void menuEditComponent(Inventory& inv) {
     string loc = readStringOptional("  ❖ New Storage Location", c->getStorageLocation());
     string packageType = readStringOptional("  ❖ New Package", c->getPackage());
     string datasheet = readStringOptional("  ❖ New Datasheet URL", c->getDatasheet());
+     string mpn = readStringOptional("  ❖ New Manufacturer PN", c->getManufacturerPN());
 
     map<string, string> extraFields = c->getCustomValues();
     auto fields = c->getCategory()->getFields();
@@ -501,7 +513,7 @@ static void menuEditComponent(Inventory& inv) {
     }
 
     try {
-        inv.editComponent(id, model, price, mt, loc, packageType, datasheet, extraFields);
+        inv.editComponent(id, model, price, mt, loc, packageType, datasheet, mpn, extraFields);
         cout << BRIGHT_GREEN << BOLD << "\n  ✔ Component updated successfully.\n" << RESET;
     } catch (const exception& e) {
         cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;

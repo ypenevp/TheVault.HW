@@ -3,12 +3,12 @@
 Component::Component(int id, const std::string &model, double price, int quantity,
                      const std::string &mountingType, const std::string &storageLocation,
                      const std::string &packageType, const std::string &datasheet,
-                     Category *category,
+                     Category *category, const std::string& manufacturerPN,
                      const std::map<std::string, std::string> &customValues)
     : id(id), model(model), price(price), quantity(quantity),
       mountingType(mountingType), storageLocation(storageLocation),
       packageType(packageType), datasheet(datasheet),
-      category(category), customValues(customValues) {}
+      category(category), manufacturerPN(manufacturerPN), customValues(customValues) {}
 
 
 int Component::getId() const { 
@@ -46,6 +46,10 @@ Category *Component::getCategory() const {
   return this->category;
 }
 
+std::string Component::getManufacturerPN() const {
+    return this->manufacturerPN;
+}
+
 const std::map<std::string, std::string> &Component::getExtraFields() const { 
   return this->extraFields;
 }
@@ -81,6 +85,10 @@ void Component::setMountingType(const std::string &mountingType) {
 
 void Component::setStorageLocation(const std::string &storageLocation) { 
   this->storageLocation = storageLocation;
+}
+
+void Component::setManufacturerPN(const std::string &mpn) {
+    this->manufacturerPN = mpn;
 }
 
 void Component::setCustomValue(const std::string &key, const std::string &value) { 

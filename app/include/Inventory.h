@@ -31,12 +31,13 @@ public:
     void addComponent(const std::string& model, double price, int quantity,
                       const std::string& mountingType, const std::string& storageLocation,
                       const std::string& packageType, const std::string& datasheet,
-                      Category* category,
+                      Category* category, const std::string& manufacturerPN,
                       const std::map<std::string, std::string>& customValues);
     void removeComponent(int id);
     void editComponent(int id, const std::string& model, double price,
                        const std::string& mountingType, const std::string& storageLocation,
                        const std::string& packageType, const std::string& datasheet,
+                       const std::string& manufacturerPN,
                        const std::map<std::string, std::string>& extraFields);
     Component* getComponentById(int id) const;
     vector<Component*> getAllComponents() const;

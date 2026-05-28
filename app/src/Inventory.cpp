@@ -76,7 +76,7 @@ int Inventory::getAllocatedQuantity(int componentId) const
 void Inventory::addComponent(const string &model, double price, int quantity,
                              const string &mountingType, const string &storageLocation,
                              const string &packageType, const string &datasheet,
-                             Category *category,
+                             Category *category, const std::string& manufacturerPN,
                              const map<string, string> &customValues)
 {
 
@@ -87,7 +87,7 @@ void Inventory::addComponent(const string &model, double price, int quantity,
     }
     Component *comp = new Component(this->nextComponentId++, model, price,
                                     quantity, mountingType, storageLocation,
-                                    packageType, datasheet, category);
+                                    packageType, datasheet, category, manufacturerPN);
     for (const auto &cv : customValues)
         comp->setCustomValue(cv.first, cv.second);
     this->components.push_back(comp);
@@ -113,6 +113,7 @@ void Inventory::removeComponent(int id)
 void Inventory::editComponent(int id, const string &model, double price,
                               const string &mountingType, const string &storageLocation,
                               const string &packageType, const string &datasheet,
+                              const std::string& manufacturerPN,
                               const map<string, string> &extraFields)
 {
     Component *comp = getComponentById(id);
@@ -129,6 +130,7 @@ void Inventory::editComponent(int id, const string &model, double price,
     comp->setStorageLocation(storageLocation);
     comp->setPackage(packageType);
     comp->setDatasheet(datasheet);
+    comp->setManufacturerPN(manufacturerPN);
 
     for (const auto &kv : extraFields)
     {
@@ -771,20 +773,25 @@ void Inventory::generateTXT(int projectId) const {
     if (!file.is_open())
         throw runtime_error("Failed to open export file: " + filename);
 
-    file << "=================================================================================================\n";
-    file << "                                      BILL OF MATERIALS                                          \n";
-    file << "=================================================================================================\n";
+    time_t now = time(nullptr);
+    tm* local = localtime(&now);
+
+    file << "======================================================================================================================\n";
+    file << "                                                   BILL OF MATERIALS                                                  \n";
+    file << "======================================================================================================================\n";
     file << " Project     : " << project->getName() << "\n";
     file << " Start Date  : " << project->getStartDate() << "\n";
+    file << " Export Date : " << setfill('0') << local->tm_year + 1900 << "-" << setw(2) <<  local->tm_mon + 1 << "-" << setw(2) <<  local->tm_mday  << setfill(' ') << "\n";
     file << " Description : " << project->getDescription() << "\n";
-    file << "=================================================================================================\n";
+    file << "======================================================================================================================\n";
     file << left << " " << setw(23) << "Model"
+         << setw(26) << "Manufacturer PN"
          << setw(16) << "Category"
          << setw(18) << "Location"
          << setw(8)  << "Qty"
          << setw(17) << "Unit Price(€)"
          << setw(14) << "Total(€)" << "\n";
-    file << "-------------------------------------------------------------------------------------------------\n";
+    file << "----------------------------------------------------------------------------------------------------------------------\n";
 
     double grandTotal = 0.0;
     for (const auto &uc : project->getComponents()) {
@@ -795,7 +802,11 @@ void Inventory::generateTXT(int projectId) const {
         const Category *cat = comp->getCategory();
         string catName = cat ? cat->getName() : "Unknown";
 
+        string mpn = comp->getManufacturerPN();
+        if(mpn.empty()) mpn = "-";
+
         file << left << " " << setw(23) << comp->getModel()
+             << setw(26) << mpn
              << setw(16) << catName
              << setw(18) << comp->getStorageLocation()
              << setw(8) << uc.getAllocatedQuantity()
@@ -804,9 +815,9 @@ void Inventory::generateTXT(int projectId) const {
              << setw(14) << lineTotal << "\n";
     }
 
-    file << "-------------------------------------------------------------------------------------------------\n";
-    file << right << setw(82) << "Grand Total: " << fixed << setprecision(2) << grandTotal << " €\n";
-    file << "=================================================================================================\n";
+    file << "----------------------------------------------------------------------------------------------------------------------\n";
+    file << right << setw(107) << "Grand Total: " << fixed << setprecision(2) << grandTotal << " €\n";
+    file << "======================================================================================================================\n";
 
     file.close();
 }
@@ -1096,6 +1107,7 @@ void Inventory::saveToFile() const
                  << comp->getStorageLocation() << "|"
                  << comp->getPackage() << "|"
                  << comp->getDatasheet() << "|"
+                 << comp->getManufacturerPN() << "|"
                  << (comp->getCategory() ? comp->getCategory()->getId() : 0);
 
         for (const auto &cv : comp->getCustomValues())
@@ -1193,7 +1205,7 @@ void Inventory::loadFromFile()
             vector<string> tokens;
             while (getline(ss, token, '|'))
                 tokens.push_back(token);
-            if (tokens.size() < 7)
+            if (tokens.size() < 10)
                 continue;
 
             int id = stoi(tokens[0]);
@@ -1204,9 +1216,11 @@ void Inventory::loadFromFile()
             string location = tokens[5];
             string packageType = tokens[6];
             string datasheet = tokens[7];
+            string manufacturerPN = tokens[8];
+
             int catId = 0;
-            if (tokens.size() > 8)
-                catId = stoi(tokens[8]);
+            if (tokens.size() > 9)
+                catId = stoi(tokens[9]);
 
             Category *cat = nullptr;
             try
@@ -1219,9 +1233,9 @@ void Inventory::loadFromFile()
 
             Component *comp = new Component(id, model, price, qty,
                                             mountingType, location,
-                                            packageType, datasheet, cat);
+                                            packageType, datasheet, cat, manufacturerPN);
 
-            for (size_t i = 9; i < tokens.size(); ++i)
+            for (size_t i = 10; i < tokens.size(); ++i)
             {
                 auto pos = tokens[i].find(':');
                 if (pos != string::npos)

@@ -17,13 +17,14 @@ private:
     std::string packageType;
     std::string datasheet;
     Category *category;
+    std::string manufacturerPN;
     std::map<std::string, std::string> extraFields;
 
 public:
     Component(int id, const std::string &model, double price, int quantity,
                   const std::string &mountingType, const std::string &storageLocation,
                   const std::string &packageType, const std::string &datasheet,
-                  Category *category,
+                  Category *category, const std::string& manufacturerPN,
                   const std::map<std::string, std::string> &customValues = {});
 
     int getId() const;
@@ -35,6 +36,7 @@ public:
     std::string getPackage() const;
     std::string getDatasheet() const;
     Category *getCategory() const;
+    std::string getManufacturerPN() const;
     std::map<std::string, std::string> customValues;
     const std::map<std::string, std::string> &getCustomValues() const;
     const std::map<std::string, std::string> &getExtraFields() const;
@@ -46,6 +48,7 @@ public:
     void setQuantity(int quantity);
     void setMountingType(const std::string &mountingType);
     void setStorageLocation(const std::string &storageLocation);
+    void setManufacturerPN(const std::string &mpn);
     void setCustomValue(const std::string &key, const std::string &value);
 
 };

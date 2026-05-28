@@ -890,10 +890,32 @@ static void menuProjectsMenu(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+static void menuUpdateQuantity(Inventory& inv) {
+    int id = promptComponent(inv, "Select Component to Update Quantity");
+    if (id == -1) return;
+
+    Component* c = inv.getComponentById(id);
+    if (!c) return;
+
+    printHeader("Update Free Quantity");
+    cout << BRIGHT_CYAN << "  ❖ Selected Component: " << c->getModel() << "\n" << RESET;
+    cout << "  ❖ Current FREE Quantity: " << BOLD << SUPER_GREEN << c->getQuantity() << RESET << "\n\n";
+
+    int newQty = readInt("  ❖ Enter new FREE quantity: ");
+    if (newQty < 0) {
+        cout << BRIGHT_RED << "  ✖ Free quantity cannot be negative.\n" << RESET;
+    } else {
+        c->setQuantity(newQty);
+        cout << BRIGHT_GREEN << BOLD << "\n  ✔ Quantity updated successfully!" << ".\n" << RESET;
+    }
+    pauseScreen();
+}
+
 static void menuStock(Inventory& inv) {
     vector<string> options = {
         "1. View Stock Distribution",
-        "2. Back",
+        "2. Update Quantity",
+        "3. Back",
     };
 
     while (true) {
@@ -909,7 +931,8 @@ static void menuStock(Inventory& inv) {
                 pauseScreen();
                 break;
             }
-            case 1: return;
+            case 1: menuUpdateQuantity(inv); break;
+            case 2: return;
         }
     }
 }

@@ -55,14 +55,19 @@ Inventory::~Inventory()
 int Inventory::getAllocatedQuantity(int componentId) const
 {
     int total = 0;
-    for (const auto &p : this->projects)
-    {
+
+    for (const auto& p : this->projects) {
+
         if (p.isArchived())
             continue;
-        for (const auto &uc : p.getComponents())
+
+        for (const auto& uc : p.getComponents()) {
+
             if (uc.getComponent()->getId() == componentId)
                 total += uc.getAllocatedQuantity();
+        }
     }
+
     return total;
 }
 
@@ -74,6 +79,12 @@ void Inventory::addComponent(const string &model, double price, int quantity,
                              Category *category,
                              const map<string, string> &customValues)
 {
+
+    for (const auto *c : this->components) {
+        if (c->getModel() == model) {
+            throw invalid_argument("This component already exists!!! Change model.");
+        }
+    }
     Component *comp = new Component(this->nextComponentId++, model, price,
                                     quantity, mountingType, storageLocation,
                                     packageType, datasheet, category);
@@ -105,6 +116,13 @@ void Inventory::editComponent(int id, const string &model, double price,
                               const map<string, string> &extraFields)
 {
     Component *comp = getComponentById(id);
+
+    for (const auto *c : this->components) {
+        if (c->getId() != id && c->getModel() == model) {
+            throw invalid_argument("A component with this model already exists!!!");
+        }
+    }
+
     comp->setModel(model);
     comp->setPrice(price);
     comp->setMountingType(mountingType);
@@ -186,21 +204,36 @@ void Inventory::addProject(const string &name, const string &description,
 
 void Inventory::removeProject(int id)
 {
-    auto it = find_if(this->projects.begin(), this->projects.end(),
-                      [id](const Project &p)
-                      { return p.getId() == id; });
+    auto it = find_if(
+        this->projects.begin(),
+        this->projects.end(),
+        [id](const Project& p)
+        {
+            return p.getId() == id;
+        }
+    );
 
     if (it == this->projects.end())
-        throw invalid_argument("Project not found.");
+        throw invalid_argument(
+            "Project not found."
+        );
 
-    if (!it->isArchived())
-    {
-        for (const auto &uc : it->getComponents())
-        {
-            Component *comp = getComponentById(uc.getComponent()->getId());
-            comp->setQuantity(comp->getQuantity() + uc.getAllocatedQuantity());
+    if (!it->isArchived()) {
+
+        for (const auto& uc : it->getComponents()) {
+
+            Component* comp =
+                getComponentById(
+                    uc.getComponent()->getId()
+                );
+
+            comp->setQuantity(
+                comp->getQuantity() +
+                uc.getAllocatedQuantity()
+            );
         }
     }
+
     this->projects.erase(it);
 }
 
@@ -238,60 +271,195 @@ Project Inventory::getProjectDetails(int projectId) const
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-void Inventory::addComponentToProject(int projectId, int componentId, int quantity)
+void Inventory::addComponentToProject(
+    int projectId,
+    int componentId,
+    int quantity)
 {
-    Project *project = getProjectById(projectId);
+    Project* project = getProjectById(projectId);
+
     if (project->isArchived())
-        throw runtime_error("Cannot add components to an archived project.");
+        throw runtime_error(
+            "Cannot add components to an archived project."
+        );
 
-    Component *comp = getComponentById(componentId);
-    int freeQty = getFreeQuantity(componentId);
+    Component* comp = getComponentById(componentId);
 
-    if (quantity > freeQty)
-        throw runtime_error("Insufficient stock. Available: " + to_string(freeQty));
+    if (quantity > comp->getQuantity())
+        throw runtime_error(
+            "Insufficient stock. Available: " +
+            to_string(comp->getQuantity())
+        );
+
+    comp->setQuantity(
+        comp->getQuantity() - quantity
+    );
 
     project->addComponent(comp, quantity);
 }
 
-void Inventory::removeComponentFromProject(int projectId, int componentId)
+void Inventory::removeComponentFromProject(
+    int projectId,
+    int componentId)
 {
-    getProjectById(projectId)->removeComponent(componentId);
+    Project* project = getProjectById(projectId);
+
+    for (const auto& uc : project->getComponents()) {
+
+        if (uc.getComponent()->getId() == componentId) {
+
+            if (!project->isArchived()) {
+
+                Component* comp =
+                    getComponentById(componentId);
+
+                comp->setQuantity(
+                    comp->getQuantity() +
+                    uc.getAllocatedQuantity()
+                );
+            }
+
+            break;
+        }
+    }
+
+    project->removeComponent(componentId);
 }
 
-void Inventory::updateAllocation(int projectId, int componentId, int newQuantity)
+void Inventory::updateAllocation(
+    int projectId,
+    int componentId,
+    int newQuantity)
 {
-    Project *project = getProjectById(projectId);
+    Project* project = getProjectById(projectId);
+
     if (project->isArchived())
-        throw runtime_error("Cannot update allocation in an archived project.");
+        throw runtime_error(
+            "Cannot update archived project."
+        );
 
-    int currentAllocation = 0;
-    for (const auto &uc : project->getComponents())
-        if (uc.getComponent()->getId() == componentId)
-            currentAllocation = uc.getAllocatedQuantity();
+    UsedComponent* target = nullptr;
 
-    int diff = newQuantity - currentAllocation;
-    if (diff > 0 && diff > getFreeQuantity(componentId))
-        throw runtime_error("Insufficient stock for the requested allocation.");
+    for (auto& uc : project->getComponents()) {
 
-    project->updateComponentQuantity(componentId, newQuantity);
+        if (uc.getComponent()->getId() == componentId) {
+            target = &uc;
+            break;
+        }
+    }
+
+    if (!target)
+        throw invalid_argument(
+            "Component not found in project."
+        );
+
+    int oldQty = target->getAllocatedQuantity();
+    int diff   = newQuantity - oldQty;
+
+    Component* comp = getComponentById(componentId);
+
+    if (diff > comp->getQuantity()) {
+
+        throw runtime_error(
+            "Insufficient stock."
+        );
+    }
+
+    comp->setQuantity(
+        comp->getQuantity() - diff
+    );
+
+    project->updateComponentQuantity(
+        componentId,
+        newQuantity
+    );
+}
+
+void Inventory::archiveProject(int id)
+{
+    Project* project = getProjectById(id);
+
+    if (project->isArchived())
+        return;
+
+    for (const auto& uc : project->getComponents()) {
+
+        Component* comp =
+            getComponentById(
+                uc.getComponent()->getId()
+            );
+
+        comp->setQuantity(
+            comp->getQuantity() +
+            uc.getAllocatedQuantity()
+        );
+    }
+
+    project->archive();
+}
+
+void Inventory::activateProject(int id)
+{
+    Project* project = getProjectById(id);
+
+    if (!project->isArchived())
+        return;
+
+    for (const auto& uc : project->getComponents()) {
+
+        Component* comp =
+            getComponentById(
+                uc.getComponent()->getId()
+            );
+
+        if (uc.getAllocatedQuantity() >
+            comp->getQuantity()) {
+
+            throw runtime_error(
+                "Cannot activate project: insufficient stock for '"
+                + comp->getModel()
+                + "'. Need "
+                + to_string(uc.getAllocatedQuantity())
+                + ", available "
+                + to_string(comp->getQuantity())
+                + "."
+            );
+        }
+    }
+
+    for (const auto& uc : project->getComponents()) {
+
+        Component* comp =
+            getComponentById(
+                uc.getComponent()->getId()
+            );
+
+        comp->setQuantity(
+            comp->getQuantity() -
+            uc.getAllocatedQuantity()
+        );
+    }
+
+    project->activate();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 int Inventory::getFreeQuantity(int componentId) const
 {
-    Component *comp = getComponentById(componentId);
-    return comp->getQuantity() - getAllocatedQuantity(componentId);
+    return getComponentById(componentId)->getQuantity();
 }
 
 void Inventory::printDistribution(int componentId) const
 {
     Component *c = getComponentById(componentId);
-    int freeQty = getFreeQuantity(componentId);
+    int freeQty      = getFreeQuantity(componentId);
+    int allocatedQty = getAllocatedQuantity(componentId);
+    int totalQty     = freeQty + allocatedQty;
 
     cout << "\n  " << C_BOLD << C_CYAN << "[ Stock Management for " << C_YELLOW << c->getModel() << C_CYAN << " ]\n"
          << C_RESET;
-    cout << "  ❖ Total Stock: " << C_WHITE << c->getQuantity() << C_RESET << "\n";
+    cout << "  ❖ Total Stock: " << C_WHITE << totalQty    << C_RESET << "\n";
     cout << "  ❖ Free to Use: " << C_GREEN << C_BOLD << freeQty << C_RESET << "\n\n";
 
     cout << C_BOLD << C_CYAN << left
@@ -1090,8 +1258,12 @@ void Inventory::loadFromFile()
             {
                 int id = stoi(tokens[1]);
                 this->projects.emplace_back(id, tokens[2], tokens[3], tokens[5]);
-                if (tokens[4] == "archived")
+                
+                std::string status = tokens[4];
+                std::transform(status.begin(), status.end(), status.begin(), ::tolower);
+                if (status == "archived")
                     this->projects.back().archive();
+
                 currentProject = &this->projects.back();
                 this->nextProjectId = max(this->nextProjectId, id + 1);
             }
@@ -1102,7 +1274,7 @@ void Inventory::loadFromFile()
                 try
                 {
                     Component *comp = getComponentById(compId);
-                    currentProject->addComponent(comp, allocQty);
+                    currentProject->loadComponent(comp, allocQty);
                 }
                 catch (...)
                 {

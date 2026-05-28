@@ -217,8 +217,8 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
     cout << BRIGHT_WHITE << string(120, '-') << "\n" << RESET;
 
     for (const auto* c : comps) {
-        int totQty = c->getQuantity();
         int freeQty = inv.getFreeQuantity(c->getId());
+        int totQty  = freeQty + inv.getAllocatedQuantity(c->getId());
 
         const Category* cat = c->getCategory();
         string catName = cat ? cat->getName() : "Unknown";
@@ -341,13 +341,15 @@ static int promptComponent(Inventory& inv, const string& title) {
     }
     vector<string> opts;
     for (auto* c : comps) {
+        int free = inv.getFreeQuantity(c->getId());
+        int tot  = free + inv.getAllocatedQuantity(c->getId());
         string catName = c->getCategory() ? c->getCategory()->getName() : "N/A";
         ostringstream oss;
         oss << "ID: " << left << setw(4) << c->getId()
             << " | " << left << setw(18) << c->getModel()
             << " | Cat: " << left << setw(12) << catName
-            << " | Tot: " << left << setw(4) << c->getQuantity()
-            << " | Free: " << inv.getFreeQuantity(c->getId());
+            << " | Tot: " << left << setw(4) << tot
+            << " | Free: " << free;
         opts.push_back(oss.str());
     }
     opts.push_back("Back");
@@ -391,6 +393,7 @@ static int promptProject(Inventory& inv, const string& title) {
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 static void menuAddComponentToProject(Inventory& inv);
+static void menuRemoveComponentFromProject(Inventory& inv);
 
 static void menuAddComponent(Inventory& inv) {
     int catId = promptCategory(inv, "Select Category for Component");
@@ -399,7 +402,25 @@ static void menuAddComponent(Inventory& inv) {
     Category* cat = inv.getCategoryById(catId);
 
     printHeader("Add Component");
-    string model = readString("  ❖ Model: ");
+
+    string model;
+    while (true) {
+        model = readString("  ❖ Model: ");
+        bool exists = false;
+        for (const auto* comp : inv.getAllComponents()) {
+            if (comp->getModel() == model) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (exists) {
+            cout << BRIGHT_RED << "  ✖ Component with this model already exists!!! Change model!\n\n" << RESET;
+        } else {
+            break;
+        }
+    }
+
     double price = readDouble("  ❖ Price (€): ");
     int qty = readInt("  ❖ Quantity: ");
     string mt = readMountingType();
@@ -438,7 +459,24 @@ static void menuEditComponent(Inventory& inv) {
 
     printHeader("Edit Component (Press Enter to keep current values)");
 
-    string model = readStringOptional("  ❖ New Model", c->getModel());
+    string model;
+    while (true) {
+        model = readStringOptional("  ❖ New Model", c->getModel());
+        bool exists = false;
+        for (const auto* comp : inv.getAllComponents()) {
+            if (comp->getId() != id && comp->getModel() == model) {
+                exists = true;
+                break;
+            }
+        }
+
+        if (exists) {
+            cout << BRIGHT_RED << "  ✖ Component with this model exists!! Enter a different one.\n\n" << RESET;
+        } else {
+            break;
+        }
+    }
+
     double price = readDoubleOptional("  ❖ New Price", c->getPrice(), " €");
     string mt = readMountingType(c->getMountingType());
     string loc = readStringOptional("  ❖ New Storage Location", c->getStorageLocation());
@@ -497,7 +535,8 @@ static void menuComponentsMenu(Inventory& inv) {
         "3. Edit Component",
         "4. Remove Component",
         "5. Add to Project",
-        "6. Back"
+        "6. Remove from Project",
+        "7. Back"
     };
 
     while (true) {
@@ -509,7 +548,8 @@ static void menuComponentsMenu(Inventory& inv) {
             case 2: menuEditComponent(inv); break;
             case 3: menuRemoveComponent(inv); break;
             case 4: menuAddComponentToProject(inv); break;
-            case 5: return;
+            case 5: menuRemoveComponentFromProject(inv); break;
+            case 6: return;
         }
     }
 }
@@ -659,6 +699,95 @@ static void menuAddComponentToProject(Inventory& inv) {
     pauseScreen();
 }
 
+static void menuRemoveComponentFromProject(Inventory& inv) {
+    int projectId = promptProject(inv, "Select Project");
+    if (projectId == -1) return;
+
+    Project p = inv.getProjectDetails(projectId);
+    const auto& comps = p.getComponents();
+
+    if (comps.empty()) {
+        cout << BRIGHT_YELLOW << "  ⚠ Project '" << p.getName() << "' has no components.\n" << RESET;
+        pauseScreen();
+        return;
+    }
+
+    vector<string> opts;
+    for (const auto& uc : comps) {
+        opts.push_back("ID: " + to_string(uc.getComponent()->getId()) + "  "
+                     + uc.getComponent()->getModel()
+                     + "  [Allocated: " + to_string(uc.getAllocatedQuantity()) + "]");
+    }
+    opts.push_back("Back");
+
+    int sel = selectFromMenu(opts, "Components in project '" + p.getName() + "'");
+
+    if (sel == (int)comps.size()) return;
+
+    int compId = comps[sel].getComponent()->getId();
+    int currentQty = comps[sel].getAllocatedQuantity();
+    string compModel = comps[sel].getComponent()->getModel();
+
+
+    vector<string> removeOpts = {
+        "Remove entirely",
+        "Reduce quantity (Current qty: " + to_string(currentQty) + ")",
+        "Back"
+    };
+
+    int removeAction = selectFromMenu(removeOpts, "Remove Component: " + compModel);
+
+    try {
+        if (removeAction == 0) {
+            inv.removeComponentFromProject(projectId, compId);
+            cout << BRIGHT_GREEN << BOLD << "\n  ✔ Component removed entirely from project.\n" << RESET;
+            pauseScreen();
+        }
+        else if (removeAction == 1) {
+            int toRemove = readInt("  ❖ How many to remove? ");
+            if (toRemove <= 0 || toRemove > currentQty) {
+                cout << BRIGHT_RED << "  ✖ Invalid quantity.\n" << RESET;
+            } else if (toRemove == currentQty) {
+                inv.removeComponentFromProject(projectId, compId);
+                cout << BRIGHT_GREEN << BOLD << "\n  ✔ Component removed entirely from project.\n" << RESET;
+            } else {
+                inv.updateAllocation(projectId, compId, currentQty - toRemove);
+                cout << BRIGHT_GREEN << BOLD << "\n  ✔ Quantity reduced.\n" << RESET;
+            }
+            pauseScreen();
+        }
+        else if (removeAction == 2) {
+            return;
+        }
+    } catch (const exception& e) {
+        cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+        pauseScreen();
+    }
+}
+
+static void menuChangeProjectStatus(Inventory& inv) {
+    int id = promptProject(inv, "Select Project to Change Status");
+    if (id == -1) return;
+
+     vector<string> statusOptions = { "Archive", "Activate", "Back" };
+    int statusChoice = selectFromMenu(statusOptions, "Project Status");
+
+    try {
+        if (statusChoice == 0) {
+            inv.archiveProject(id);
+            cout << BRIGHT_GREEN << BOLD << "  ✔ Project archived.\n" << RESET;
+            pauseScreen();
+        } else if (statusChoice == 1) {
+            inv.activateProject(id);
+            cout << BRIGHT_GREEN << BOLD << "  ✔ Project activated.\n" << RESET;
+            pauseScreen();
+        }
+    } catch (const exception& e) {
+        cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+        pauseScreen();
+    }
+}
+
 static void menuProjectsMenu(Inventory& inv) {
     vector<string> options = {
         "1. View Projects",
@@ -666,9 +795,11 @@ static void menuProjectsMenu(Inventory& inv) {
         "3. View Details",
         "4. Edit Project",
         "5. Add Component to Project",
-        "6. Remove Project",
-        "7. Generate BOM",
-        "8. Back"
+        "6. Remove Component from Project",
+        "7. Change Status (Active / Archive)",
+        "8. Remove Project",
+        "9. Generate BOM",
+        "10. Back"
     };
 
     while (true) {
@@ -688,9 +819,20 @@ static void menuProjectsMenu(Inventory& inv) {
                 if (id == -1) break;
 
                 printHeader("Edit Project");
-                string name = readString("  ❖ New Name: ");
-                string desc = readString("  ❖ New Description: ");
-                string date = readString("  ❖ New Start Date: ");
+                Project p = inv.getProjectDetails(id);
+
+                cout << BRIGHT_CYAN << "  ❖ Name (" << p.getName() << "): " << RESET;
+                string name;
+                getline(cin, name);
+                if (name.empty()) name = p.getName();
+
+                cout << BRIGHT_CYAN << "  ❖ Description (" << p.getDescription() << "): " << RESET;
+                string desc;
+                getline(cin, desc);
+                if (desc.empty()) desc = p.getDescription();
+
+                string date = p.getStartDate();
+
                 try {
                     inv.editProject(id, name, desc, date);
                     cout << BRIGHT_GREEN << BOLD << "\n  ✔ Project updated.\n" << RESET;
@@ -701,7 +843,9 @@ static void menuProjectsMenu(Inventory& inv) {
                 break;
             }
             case 4: menuAddComponentToProject(inv); break;
-            case 5: {
+            case 5: menuRemoveComponentFromProject(inv); break;
+            case 6: menuChangeProjectStatus(inv); break;
+            case 7: {
                 int id = promptProject(inv, "Select Project to remove");
                 if (id == -1) break;
 
@@ -714,7 +858,7 @@ static void menuProjectsMenu(Inventory& inv) {
                 pauseScreen();
                 break;
             }
-            case 6: {
+            case 8: {
                 int id = promptProject(inv, "Select Project to export BOM");
                 if (id == -1) break;
 
@@ -727,7 +871,7 @@ static void menuProjectsMenu(Inventory& inv) {
                 pauseScreen();
                 break;
             }
-            case 7: return;
+            case 9: return;
         }
     }
 }

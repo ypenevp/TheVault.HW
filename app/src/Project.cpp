@@ -109,3 +109,16 @@ double Project::getTotalPrice() const {
         total += uc.getComponent()->getPrice() * uc.getAllocatedQuantity();
     return total;
 }
+
+void Project::loadComponent(Component* component, int quantity) {
+    if (component == nullptr) throw invalid_argument("Component cannot be null!");
+    if (quantity <= 0) throw invalid_argument("Quantity must be positive!");
+
+    for (auto& uc : this->components) {
+        if (uc.getComponent()->getId() == component->getId()) {
+            uc.setAllocatedQuantity(uc.getAllocatedQuantity() + quantity);
+            return;
+        }
+    }
+    this->components.emplace_back(component, quantity);
+}

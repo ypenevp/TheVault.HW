@@ -21,13 +21,12 @@ private:
     string dbPath;
     string exportsPath;
 
-    int getAllocatedQuantity(int componentId) const;
-
 public:
     Inventory(const string& dbPath = "db/",
               const string& exportsPath = "exports/");
     Inventory(const Inventory&) = delete;
     Inventory& operator=(const Inventory&) = delete;
+    int getAllocatedQuantity(int componentId) const;
 
     void addComponent(const std::string& model, double price, int quantity,
                       const std::string& mountingType, const std::string& storageLocation,
@@ -61,6 +60,8 @@ public:
     void addComponentToProject(int projectId, int componentId, int quantity);
     void removeComponentFromProject(int projectId, int componentId);
     void updateAllocation(int projectId, int componentId, int newQuantity);
+    void archiveProject(int id);
+    void activateProject(int id);
 
     int getFreeQuantity(int componentId) const;
     void printDistribution(int componentId) const;

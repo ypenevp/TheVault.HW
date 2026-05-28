@@ -40,6 +40,8 @@ public:
     void updateComponentQuantity(int componentId, int newQuantity);
 
     double getTotalPrice() const;
+
+    void loadComponent(Component* component, int quantity);
 };
 
 #endif

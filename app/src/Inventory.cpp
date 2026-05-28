@@ -51,6 +51,7 @@ Inventory::~Inventory()
 #define C_ORANGE    "\033[38;5;208m"
 #define C_DEEP_RED  "\033[38;5;196m"
 #define C_TEAL      "\033[38;2;0;255;230m"
+#define C_BLUE      "\033[94m"
 
 int Inventory::getAllocatedQuantity(int componentId) const
 {
@@ -837,27 +838,32 @@ void Inventory::importBOM(const std::string& filename) const {
         throw std::runtime_error("Failed to open BOM file: " + filename);
 
     struct BOMItem {
-        std::string reference;
-        int quantity = 0;
         std::string value;
+        int quantity = 0;
+        std::string reference;
+        std::string mpn;
         std::string footprint;
-        std::vector<std::string> extraFields;
+        std::string datasheet;
     };
 
-    const int VALUE_WIDTH     = 24;
-    const int QUANTITY_WIDTH  = 10;
-    const int REFERENCE_WIDTH = 22;
-    const int EXTRA_WIDTH     = 24;
-    const int FOOTPRINT_WIDTH = 40;
+    // Table 1
+    const int VALUE_WIDTH     = 30;
+    const int QUANTITY_WIDTH  = 8;
+    const int REFERENCE_WIDTH = 30;
+    const int MPN_WIDTH       = 45;
+
+    // Table 2
+    const int DATASHEET_WIDTH = 10;
+    const int FOOTPRINT_WIDTH = 45;
 
     std::vector<BOMItem> items;
-    std::vector<std::string> headers;
-    std::vector<int> extraColumnIndexes;
 
-    int referenceIndex = 0;
-    int quantityIndex  = 1;
-    int valueIndex     = 2;
-    int footprintIndex = 3;
+    int valueIndex     = -1;
+    int quantityIndex  = -1;
+    int referenceIndex = -1;
+    int mpnIndex       = -1;
+    int footprintIndex = -1;
+    int datasheetIndex = -1;
 
     bool isHeaderRow = true;
     std::string line;
@@ -873,7 +879,7 @@ void Inventory::importBOM(const std::string& filename) const {
         for (char ch : line) {
             if (ch == '"') {
                 insideQuotes = !insideQuotes;
-            } else if (ch == ';' && !insideQuotes) {
+            } else if (ch == ',' && !insideQuotes) {
                 cells.push_back(currentCell);
                 currentCell.clear();
             } else {
@@ -888,82 +894,53 @@ void Inventory::importBOM(const std::string& filename) const {
         }
 
         if (isHeaderRow) {
-            headers = cells;
-
             for (int i = 0; i < static_cast<int>(cells.size()); ++i) {
                 std::string header = cells[i];
-                std::transform(header.begin(), header.end(), header.begin(),
-                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                for (char& c : header) {
+                    c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+                }
 
-                if (header == "reference" || header == "ref" || header == "designator")
-                    referenceIndex = i;
+                if (header == "name" || header == "value")
+                    valueIndex = i;
                 else if (header == "qty" || header == "quantity")
                     quantityIndex = i;
-                else if (header == "value" || header == "model" || header == "name" || header == "part number")
-                    valueIndex = i;
+                else if (header == "designator" || header == "reference")
+                    referenceIndex = i;
+                else if (header == "manufacturerpn" || header == "mpn" || header == "part number")
+                    mpnIndex = i;
                 else if (header == "footprint")
                     footprintIndex = i;
+                else if (header == "datasheet" || header == "data sheet")
+                    datasheetIndex = i;
             }
-
-            for (int i = 0; i < static_cast<int>(cells.size()); ++i) {
-                if (i != referenceIndex && i != quantityIndex &&
-                    i != valueIndex    && i != footprintIndex)
-                    extraColumnIndexes.push_back(i);
-            }
-
             isHeaderRow = false;
             continue;
         }
 
         BOMItem item;
-        item.reference = (referenceIndex < static_cast<int>(cells.size())) ? cells[referenceIndex] : "-";
+        item.value     = (valueIndex >= 0 && valueIndex < static_cast<int>(cells.size()) && !cells[valueIndex].empty()) ? cells[valueIndex] : "-";
 
-        const std::string quantityText = (quantityIndex < static_cast<int>(cells.size())) ? cells[quantityIndex] : "0";
+        std::string quantityText = (quantityIndex >= 0 && quantityIndex < static_cast<int>(cells.size())) ? cells[quantityIndex] : "0";
         try { item.quantity = std::stoi(quantityText); } catch (...) { item.quantity = 0; }
 
-        item.value     = (valueIndex     < static_cast<int>(cells.size())) ? cells[valueIndex]     : "-";
-        item.footprint = (footprintIndex < static_cast<int>(cells.size())) ? cells[footprintIndex] : "-";
-
-        for (int index : extraColumnIndexes)
-            item.extraFields.push_back(index < static_cast<int>(cells.size()) ? cells[index] : "-");
+        item.reference = (referenceIndex >= 0 && referenceIndex < static_cast<int>(cells.size()) && !cells[referenceIndex].empty()) ? cells[referenceIndex] : "-";
+        item.mpn       = (mpnIndex >= 0 && mpnIndex < static_cast<int>(cells.size()) && !cells[mpnIndex].empty()) ? cells[mpnIndex] : "-";
+        item.footprint = (footprintIndex >= 0 && footprintIndex < static_cast<int>(cells.size()) && !cells[footprintIndex].empty()) ? cells[footprintIndex] : "-";
+        item.datasheet = (datasheetIndex >= 0 && datasheetIndex < static_cast<int>(cells.size()) && !cells[datasheetIndex].empty()) ? cells[datasheetIndex] : "-";
 
         items.push_back(item);
     }
 
-    std::vector<bool> extraColumnHasLink(extraColumnIndexes.size(), false);
-    std::vector<std::size_t> extraColumnWidths(extraColumnIndexes.size(), EXTRA_WIDTH);
-
-    for (const BOMItem& item : items) {
-        for (std::size_t i = 0; i < item.extraFields.size(); ++i) {
-            const std::string& field = item.extraFields[i];
-            if (field.rfind("http://", 0) == 0 || field.rfind("https://", 0) == 0)
-                extraColumnHasLink[i] = true;
-        }
-    }
-
-    for (std::size_t i = 0; i < extraColumnIndexes.size(); ++i) {
-        const std::string& header = headers[extraColumnIndexes[i]];
-        extraColumnWidths[i] = extraColumnHasLink[i]
-            ? std::max<std::size_t>(header.size(), 4)
-            : EXTRA_WIDTH;
-    }
-
     std::cout << "\n" << C_BOLD << C_CYAN << "  ▐▓█▓▌ IMPORTED BOM ANALYSIS\n" << C_RESET;
-    std::cout << C_WHITE << std::string(170, '^') << "\n" << C_RESET;
+    std::cout << C_WHITE << std::string(125, '=') << "\n" << C_RESET;
     std::cout << C_BOLD << C_CYAN << std::left;
 
-    std::cout << " "; padColumn("Value / Model", VALUE_WIDTH);
+    std::cout << " "; padColumn("Name / Value", VALUE_WIDTH);
     std::cout << " | "; padColumn("Quantity",  QUANTITY_WIDTH);
-    std::cout << " | "; padColumn("Reference", REFERENCE_WIDTH);
-
-    for (std::size_t i = 0; i < extraColumnIndexes.size(); ++i) {
-        std::cout << " | ";
-        padColumn(headers[extraColumnIndexes[i]], extraColumnWidths[i]);
-    }
-
-    std::cout << " | "; padColumn("Footprint", FOOTPRINT_WIDTH);
+    std::cout << " | "; padColumn("Designator", REFERENCE_WIDTH);
+    std::cout << " | "; padColumn("Manufacturer PN", MPN_WIDTH);
     std::cout << "\n" << C_RESET;
-    std::cout << C_WHITE << std::string(170, '-') << "\n" << C_RESET;
+    std::cout << C_WHITE << std::string(125, '-') << "\n" << C_RESET;
 
     for (const BOMItem& item : items) {
         std::cout << C_CYAN << " " << C_TEAL;
@@ -972,28 +949,50 @@ void Inventory::importBOM(const std::string& filename) const {
         padColumn(std::to_string(item.quantity), QUANTITY_WIDTH);
         std::cout << C_RESET << " | " << C_ORANGE;
         padColumn(item.reference, REFERENCE_WIDTH);
-        std::cout << C_RESET;
-
-        for (std::size_t i = 0; i < item.extraFields.size(); ++i) {
-            const std::string& field = item.extraFields[i];
-            const std::size_t width  = extraColumnWidths[i];
-            std::cout << " | ";
-
-            if (field.rfind("http://", 0) == 0 || field.rfind("https://", 0) == 0) {
-                std::cout << "\033]8;;" << field << "\033\\" << "link" << "\033]8;;\033\\";
-                if (4 < width)
-                    std::cout << std::string(width - 4, ' ');
-            } else {
-                padColumn(field, width);
-            }
-        }
-
-        std::cout << " | " << C_WHITE;
-        padColumn(item.footprint, FOOTPRINT_WIDTH);
+        std::cout << C_RESET << " | " << C_WHITE;
+        padColumn(item.mpn, MPN_WIDTH);
         std::cout << C_RESET << "\n";
     }
+    std::cout << C_WHITE << std::string(125, '=') << "\n\n" << C_RESET;
 
-    std::cout << C_WHITE << std::string(170, '^') << "\n\n" << C_RESET;
+    if (footprintIndex != -1 || datasheetIndex != -1) {
+        std::cout << "\n" << C_BOLD << C_CYAN << "  [ COMPONENT RESOURCES ]\n" << C_RESET;
+        std::cout << C_WHITE << std::string(95, '=') << "\n" << C_RESET;
+        std::cout << C_BOLD << C_CYAN << std::left;
+
+        std::cout << " "; padColumn("Name / Value", VALUE_WIDTH);
+        std::cout << " | "; padColumn("Datasheet", DATASHEET_WIDTH);
+        std::cout << " | "; padColumn("Footprint", FOOTPRINT_WIDTH);
+        std::cout << "\n" << C_RESET;
+        std::cout << C_WHITE << std::string(95, '-') << "\n" << C_RESET;
+
+        for (const BOMItem& item : items) {
+            std::cout << C_TEAL << " ";
+            padColumn(item.value, VALUE_WIDTH);
+            std::cout << C_RESET << " | ";
+
+            if (item.datasheet != "-" && !item.datasheet.empty()) {
+                if (item.datasheet.rfind("http://", 0) == 0 || item.datasheet.rfind("https://", 0) == 0) {
+                    std::cout << C_BLUE << "\033]8;;" << item.datasheet << "\033\\link\033]8;;\033\\" << C_RESET;
+                    std::cout << std::string(DATASHEET_WIDTH - 4, ' ');
+                } else {
+                    std::cout << C_WHITE;
+                    padColumn(item.datasheet, DATASHEET_WIDTH);
+                    std::cout << C_RESET;
+                }
+            } else {
+                std::cout << C_WHITE;
+                padColumn("-", DATASHEET_WIDTH);
+                std::cout << C_RESET;
+            }
+
+            std::cout << " | " << C_WHITE;
+            padColumn(item.footprint, FOOTPRINT_WIDTH);
+            std::cout << C_RESET << "\n";
+        }
+        std::cout << C_WHITE << std::string(95, '=') << "\n\n" << C_RESET;
+    }
+
     std::cout << C_BOLD << C_CYAN << "  [ INVENTORY STATUS ]\n\n" << C_RESET;
 
     std::vector<std::string> availableItems;
@@ -1001,11 +1000,19 @@ void Inventory::importBOM(const std::string& filename) const {
     std::vector<std::string> unavailableItems;
 
     for (const BOMItem& item : items) {
-        Component* match = searchByExactName(item.value);
+        Component* match = nullptr;
+        if (item.mpn != "-" && !item.mpn.empty()) {
+            for (auto* c : this->components) {
+                if (c->getManufacturerPN() == item.mpn) {
+                    match = c;
+                    break;
+                }
+            }
+        }
 
         if (match == nullptr) {
             unavailableItems.push_back(
-                "  ► " + item.value + " (" + item.reference + ") -> Needed: "
+                "  ► " + item.value + " (" + item.reference + ") -> MPN: " + item.mpn + " -> Needed: "
                 + C_DEEP_RED + std::to_string(item.quantity) + C_RESET);
             continue;
         }
@@ -1021,8 +1028,8 @@ void Inventory::importBOM(const std::string& filename) const {
             partiallyAvailableItems.push_back(
                 "  ► " + item.value + " (" + item.reference + ") -> Have "
                 + C_YELLOW + std::to_string(freeQty) + C_RESET
-                + " (Needed: " + C_ORANGE + std::to_string(item.quantity - freeQty) + C_RESET
-                + ") -> Located in " + match->getStorageLocation());
+                + " -> Needed: " + std::to_string(item.quantity) + " (" + item.mpn + ")"
+                + " -> Located in " + match->getStorageLocation());
         }
     }
 

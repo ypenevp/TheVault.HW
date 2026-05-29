@@ -763,7 +763,7 @@ Component* Inventory::searchByExactName(const string &name) const {
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 
-void Inventory::generateTXT(int projectId) const {
+void Inventory::generateBOM(int projectId) const {
     const Project *project = getProjectById(projectId);
     if (!project) throw invalid_argument("Project not found.");
 

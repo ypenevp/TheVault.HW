@@ -6,23 +6,35 @@
 
 
 > The Vault.HW is a **CLI-based** hardware inventory management system designed for **organizing and tracking** electronic **components** across personal **projects**.  
-It allows users to manage components, categories, and projects, monitor **stock availability**, allocate parts to active builds, **compare component specifications**, and generate project component **reports** — all through a fast and efficient console interface.
+It allows users to manage components, categories, and projects, monitor **stock availability**, allocate parts to active builds, **compare component specifications**, and import/export project **BOMs** — all through a fast and efficient console interface.
 ---
 
 ## Features
 
-* **Component Inventory** — Add, edit, view, and remove electronic components with fields for model, quantity, price, storage location, mounting type, package, and datasheet.
-* **Category System** — Three built-in component categories (Resistor, Transistor, Diode) with type-specific technical fields, plus the ability to define fully custom categories with user-chosen fields and measurement units.
-* **Project Management** — Create and manage projects, each holding a list of components required for that build.
-* **Component Allocation** — Assign specific quantities of components to a project. Allocated stock is tracked separately from the total inventory and returned when the allocation is removed.
-* **Active and Archived Projects** — Projects can be archived at any time. Archived projects no longer affect inventory levels but remain accessible for reference.
-* **Stock Distribution** — View a breakdown of how a component's stock is distributed across all projects, alongside the remaining free quantity.
-* **Component Search** — Search components by name, category, or storage location, with an optional price range filter.
-* **Component Comparison** — Compare any two components side by side across all their fields.
-* **BOM Export** — Generate a `.txt` Bill of Materials for any project, listing all components with quantities, prices, and a total cost.
+* **Component Inventory** — Add, edit, view, and remove electronic components with comprehensive fields including model, Manufacturer Part Number (MPN), quantity, price, storage location, mounting type, package, and datasheet link.
+* **Category System** — Three built-in component categories (Resistor, Transistor, Diode) with type-specific technical fields. Ability to dynamically define fully custom categories with user-chosen properties and custom measurement units.
+* **Project Management** — Create, manage, and toggle the status (Active/Archived) of projects. Archived projects act as historical records and immediately restore their allocated components back to the global free pool.
+* **Component Allocation** — Assign precise quantities of components to active builds. Allocated stock is strictly isolated from the total unallocated (free) inventory.
+* **Stock Monitoring & Override** — View a comprehensive breakdown of how a single component is distributed across all your projects. Includes the ability to manually override unallocated stock quantities at any time without disrupting active projects.
+* **Component Comparison** — Interactive side-by-side comparison of any two components across both standard and category-specific technical specifications.
+* **Component Search** — Look up components by name, category, or storage location, accompanied by a dynamic price range filter.
+* **External BOM Analysis** — Import `.csv` Bill of Materials generated from EDA software like Altium Designer, KiCad and others. The software intelligently parses unpredictable headers, evaluates required quantities against the local database (matching by MPN), and generates a precise procurement shortage report.
+* **BOM Export** — Export a `.txt` Bill of Materials for any local project, detailing part numbers, footprint/locations, quantities, unit prices, and total project cost.
 
 
-![Class Diagram](docs/demo_inventory.png)
+![Inventory Demo](docs/demo_inventory.png)
+
+---
+
+### Navigation
+
+The application uses an arrow-key driven menu. Use the **Up** and **Down** arrow keys to move between options and press **Enter** to confirm a selection.
+
+<p align="center">
+  <img src="docs/demo_mainMenu.png" width="32%">
+  <img src="docs/demo_projectsMenu.png" width="32%">
+  <img src="docs/demo_CategoriesMenu.png" width="32%">
+</p>
 
 ---
 
@@ -42,52 +54,56 @@ The-Vault-HW/
 ├── LICENSE
 └── README.md
 ```
- 
+
+---
+
+## Dependencies
+
+The core requirements needed to compile the application are outlined below.
+
+| Dependency | Required Version |
+| :--- |:-----------------|
+| **C++ Standard** | `C++17`          |
+| **Compiler** | GCC `7.3+`       |
+| **Build System** | CMake `4.3+`     |
+
+
 ---
 
 ## Build Instructions
 
-### Prerequisites
-
-- **CMake 4.3** or higher
-- **A C++17**-compatible compiler (GCC, Clang, or MSVC)
-### Build and Run
+First create this folders in **app/** directory:
 
 ```bash
-# Navigate to the app directory
-cd app
- 
-# Create the build directory
+# Used for build files
 mkdir build
 
-#Navigate to the build directory
-cd build
+# Used for storingt the database files
+mkdir db
 
-# Generate build files (in build/)
+# Used for exporting BOMs
+mkdir exports
+```
+
+Now navigate to the **app/build/** directory and run the following commands to build and run the application:
+
+```bash
+
+# Generate build files 
 cmake ..
  
-# Compile only (in build/)
+# Compile only 
 cmake --build .
  
-# Compile & build (in build/)
+# Compile & run the application
 cmake --build . --target run 
 
 
 ```
-
-### Navigation
-
-The application uses an arrow-key driven menu. Use the **Up** and **Down** arrow keys to move between options and press **Enter** to confirm a selection.
-
-<p align="center">
-  <img src="docs/demo_mainMenu.png" width="32%">
-  <img src="docs/demo_projectsMenu.png" width="32%">
-  <img src="docs/demo_CategoriesMenu.png" width="32%">
-</p>
 
 ---
 
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
- 
+

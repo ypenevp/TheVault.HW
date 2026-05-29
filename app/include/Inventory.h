@@ -75,7 +75,7 @@ public:
     vector<Component*> searchByPriceRange(double minPrice, double maxPrice) const;
     Component* searchByExactName(const string& name) const;
 
-    void generateTXT(int projectId) const;
+    void generateBOM(int projectId) const;
     void importBOM(const string& filename) const;
 
     void saveToFile() const;

@@ -875,7 +875,7 @@ static void menuProjectsMenu(Inventory& inv) {
                 if (id == -1) break;
 
                 try {
-                    inv.generateTXT(id);
+                    inv.generateBOM(id);
                     cout << BRIGHT_GREEN << BOLD << "\n  ✔ BOM file successfully generated in exports/ folder.\n" << RESET;
                 } catch (const exception& e) {
                     cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
@@ -1095,7 +1095,7 @@ int main() {
                        if (id == -1) break;
 
                        try {
-                           inv.generateTXT(id);
+                           inv.generateBOM(id);
                            cout << BRIGHT_GREEN << BOLD << "\n  ✔ BOM file successfully generated in exports/ folder.\n" << RESET;
                        } catch (const exception& e) {
                            cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;

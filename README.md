@@ -54,7 +54,93 @@ The-Vault-HW/
 ├── LICENSE
 └── README.md
 ```
+---
+## Class Diagram
 
+```mermaid
+classDiagram
+direction LR
+
+class Category {
+    <<abstract>>
+    -int id
+    -string name
+}
+
+class Resistor {
+    -double resistance
+    -double powerRating
+    -double tolerance
+    -double tcr
+}
+
+class Transistor {
+    -string transistorType
+    -double maxCurrent
+    -double vbe
+    -double powerDissipation
+    -double beta
+    -double alfa
+}
+
+class Diode {
+    -double forwardVoltage
+    -double maxCurrent
+}
+
+class CustomCategory {
+    -map~string,string~ customFields
+}
+
+class Component {
+    -int id
+    -string model
+    -double price
+    -int quantity
+    -string mountingType
+    -string storageLocation
+    -string packageType
+    -string datasheet
+    -Category* category
+    -string manufacturerPN
+    -map~string,string~ extraFields
+}
+
+class UsedComponent {
+    -Component* component
+    -int allocatedQuantity
+}
+
+class Project {
+    -int id
+    -string name
+    -string description
+    -string status
+    -string startDate
+    -vector~UsedComponent~ components
+}
+
+class Inventory {
+    -vector~Component*~ components
+    -vector~Category*~ categories
+    -vector~Project~ projects
+    -string dbPath
+    -string exportsPath
+}
+
+Category <|-- Resistor : inherits
+Category <|-- Transistor : inherits
+Category <|-- Diode : inherits
+Category <|-- CustomCategory : inherits
+
+Component *-- Category : composition
+UsedComponent *-- Component : composition
+Project *-- UsedComponent : composition
+
+Inventory o-- Component : owns
+Inventory o-- Category : owns
+Inventory o-- Project : owns
+```
 ---
 
 ## Dependencies

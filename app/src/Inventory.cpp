@@ -57,15 +57,17 @@ int Inventory::getAllocatedQuantity(int componentId) const
 {
     int total = 0;
 
-    for (const auto& p : this->projects) {
+    for (size_t i = 0; i < this->projects.size(); i++) {
 
-        if (p.isArchived())
+        if (this->projects[i].isArchived())
             continue;
 
-        for (const auto& uc : p.getComponents()) {
+        const vector<UsedComponent>& p_components = this->projects[i].getComponents();
+        for (size_t j = 0; j < p_components.size(); j++) {
 
-            if (uc.getComponent()->getId() == componentId)
-                total += uc.getAllocatedQuantity();
+            if (p_components[j].getComponent()->getId() == componentId) {
+                total += p_components[j].getAllocatedQuantity();
+            }
         }
     }
 
@@ -80,35 +82,44 @@ void Inventory::addComponent(const string &model, double price, int quantity,
                              Category *category, const std::string& manufacturerPN,
                              const map<string, string> &customValues)
 {
-
-    for (const auto *c : this->components) {
-        if (c->getModel() == model) {
+    for (size_t i = 0; i < this->components.size(); i++) {
+        if (this->components[i]->getModel() == model) {
             throw invalid_argument("This component already exists!!! Change model.");
         }
     }
+
     Component *comp = new Component(this->nextComponentId++, model, price,
                                     quantity, mountingType, storageLocation,
                                     packageType, datasheet, category, manufacturerPN);
-    for (const auto &cv : customValues)
-        comp->setCustomValue(cv.first, cv.second);
+
+    map<string, string>::const_iterator it;
+    for (it = customValues.begin(); it != customValues.end(); it++) {
+        comp->setCustomValue(it->first, it->second);
+    }
+
     this->components.push_back(comp);
 }
 
 void Inventory::removeComponent(int id)
 {
-
-    if (getAllocatedQuantity(id) > 0)
+    if (getAllocatedQuantity(id) > 0) {
         throw runtime_error("Cannot remove!!! Component is used in active project.");
+    }
 
-    auto it = find_if(this->components.begin(), this->components.end(),
-                      [id](Component *c)
-                      { return c->getId() == id; });
+    int indexToRemove = -1;
+    for (size_t i = 0; i < this->components.size(); i++) {
+        if (this->components[i]->getId() == id) {
+            indexToRemove = static_cast<int>(i);
+            break;
+        }
+    }
 
-    if (it == this->components.end())
+    if (indexToRemove == -1) {
         throw invalid_argument("Component not found.");
+    }
 
-    delete *it;
-    this->components.erase(it);
+    delete this->components[indexToRemove];
+    this->components.erase(this->components.begin() + indexToRemove);
 }
 
 void Inventory::editComponent(int id, const string &model, double price,
@@ -119,8 +130,8 @@ void Inventory::editComponent(int id, const string &model, double price,
 {
     Component *comp = getComponentById(id);
 
-    for (const auto *c : this->components) {
-        if (c->getId() != id && c->getModel() == model) {
+    for (size_t i = 0; i < this->components.size(); i++) {
+        if (this->components[i]->getId() != id && this->components[i]->getModel() == model) {
             throw invalid_argument("A component with this model already exists!!!");
         }
     }
@@ -133,17 +144,19 @@ void Inventory::editComponent(int id, const string &model, double price,
     comp->setDatasheet(datasheet);
     comp->setManufacturerPN(manufacturerPN);
 
-    for (const auto &kv : extraFields)
-    {
-        comp->setCustomValue(kv.first, kv.second);
+    map<string, string>::const_iterator it;
+    for (it = extraFields.begin(); it != extraFields.end(); it++) {
+        comp->setCustomValue(it->first, it->second);
     }
 }
 
 Component *Inventory::getComponentById(int id) const
 {
-    for (auto *c : this->components)
-        if (c->getId() == id)
-            return c;
+    for (size_t i = 0; i < this->components.size(); i++) {
+        if (this->components[i]->getId() == id) {
+            return this->components[i];
+        }
+    }
     throw invalid_argument("Component with id " + to_string(id) + " not found.");
 }
 
@@ -164,32 +177,42 @@ void Inventory::addCategory(Category *category)
 
 void Inventory::removeCategory(int id)
 {
-    for (auto *c : this->components)
-        if (c->getCategory() && c->getCategory()->getId() == id)
+    for (size_t i = 0; i < this->components.size(); i++) {
+        Category* currCategory = this->components[i]->getCategory();
+        if (currCategory != nullptr && currCategory->getId() == id) {
             throw runtime_error("Cannot remove category: it is used by existing components.");
+        }
+    }
 
-    auto it = find_if(this->categories.begin(), this->categories.end(),
-                      [id](Category *cat)
-                      { return cat->getId() == id; });
+    int indexToRemove = -1;
+    for (size_t i = 0; i < this->categories.size(); i++) {
+        if (this->categories[i]->getId() == id) {
+            indexToRemove = static_cast<int>(i);
+            break;
+        }
+    }
 
-    if (it == this->categories.end())
+    if (indexToRemove == -1) {
         throw invalid_argument("Category not found.");
+    }
 
-    delete *it;
-    this->categories.erase(it);
+    delete this->categories[indexToRemove];
+    this->categories.erase(this->categories.begin() + indexToRemove);
+}
+
+Category *Inventory::getCategoryById(int id) const
+{
+    for (size_t i = 0; i < this->categories.size(); i++) {
+        if (this->categories[i]->getId() == id) {
+            return this->categories[i];
+        }
+    }
+    throw invalid_argument("Category with id " + to_string(id) + " not found.");
 }
 
 void Inventory::editCategory(int id, const string &name)
 {
     getCategoryById(id)->setName(name);
-}
-
-Category *Inventory::getCategoryById(int id) const
-{
-    for (auto *cat : this->categories)
-        if (cat->getId() == id)
-            return cat;
-    throw invalid_argument("Category with id " + to_string(id) + " not found.");
 }
 
 vector<Category *> Inventory::getAllCategories() const
@@ -202,42 +225,36 @@ vector<Category *> Inventory::getAllCategories() const
 void Inventory::addProject(const string &name, const string &description,
                            const string &startDate)
 {
-    this->projects.emplace_back(this->nextProjectId++, name, description, startDate);
+    Project * newP = new Project(this->nextProjectId++,name,description,startDate);
+    this->projects.push_back(*newP);
+    delete newP;
 }
 
-void Inventory::removeProject(int id)
-{
-    auto it = find_if(
-        this->projects.begin(),
-        this->projects.end(),
-        [id](const Project& p)
-        {
-            return p.getId() == id;
-        }
-    );
 
-    if (it == this->projects.end())
-        throw invalid_argument(
-            "Project not found."
-        );
-
-    if (!it->isArchived()) {
-
-        for (const auto& uc : it->getComponents()) {
-
-            Component* comp =
-                getComponentById(
-                    uc.getComponent()->getId()
-                );
-
-            comp->setQuantity(
-                comp->getQuantity() +
-                uc.getAllocatedQuantity()
-            );
+void Inventory::removeProject(int id) {
+    int indexToRemove = -1;
+    for (size_t i = 0; i < this->projects.size(); i++) {
+        if (this->projects[i].getId() == id) {
+            indexToRemove = static_cast<int>(i);
+            break;
         }
     }
 
-    this->projects.erase(it);
+    if (indexToRemove == -1) {
+        throw invalid_argument("Project not found.");
+    }
+
+    Project& projectRef = this->projects[indexToRemove];
+
+    if (!projectRef.isArchived()) {
+        const vector<UsedComponent>& p_components = projectRef.getComponents();
+        for (size_t i = 0; i < p_components.size(); i++) {
+            Component* comp = getComponentById(p_components[i].getComponent()->getId());
+            comp->setQuantity(comp->getQuantity() + p_components[i].getAllocatedQuantity());
+        }
+    }
+
+    this->projects.erase(this->projects.begin() + indexToRemove);
 }
 
 void Inventory::editProject(int id, const string &name, const string &description,
@@ -251,21 +268,27 @@ void Inventory::editProject(int id, const string &name, const string &descriptio
 
 Project *Inventory::getProjectById(int id)
 {
-    for (auto &p : this->projects)
-        if (p.getId() == id)
-            return &p;
+    for (size_t i = 0; i < this->projects.size(); i++) {
+        if (this->projects[i].getId() == id) {
+            return &this->projects[i];
+        }
+    }
     throw invalid_argument("Project with id " + to_string(id) + " not found.");
 }
 
 const Project *Inventory::getProjectById(int id) const
 {
-    for (const auto &p : this->projects)
-        if (p.getId() == id)
-            return &p;
+    for (size_t i = 0; i < this->projects.size(); i++) {
+        if (this->projects[i].getId() == id) {
+            return &this->projects[i];
+        }
+    }
     throw invalid_argument("Project with id " + to_string(id) + " not found.");
 }
 
-vector<Project> &Inventory::getAllProjects() { return this->projects; }
+vector<Project> &Inventory::getAllProjects() {
+    return this->projects; 
+}
 
 Project Inventory::getProjectDetails(int projectId) const
 {
@@ -306,22 +329,14 @@ void Inventory::removeComponentFromProject(
     int componentId)
 {
     Project* project = getProjectById(projectId);
+    const vector<UsedComponent>& p_components = project->getComponents();
 
-    for (const auto& uc : project->getComponents()) {
-
-        if (uc.getComponent()->getId() == componentId) {
-
+    for (size_t i = 0; i < p_components.size(); i++) {
+        if (p_components[i].getComponent()->getId() == componentId) {
             if (!project->isArchived()) {
-
-                Component* comp =
-                    getComponentById(componentId);
-
-                comp->setQuantity(
-                    comp->getQuantity() +
-                    uc.getAllocatedQuantity()
-                );
+                Component* comp = getComponentById(componentId);
+                comp->setQuantity(comp->getQuantity() + p_components[i].getAllocatedQuantity());
             }
-
             break;
         }
     }
@@ -337,24 +352,20 @@ void Inventory::updateAllocation(
     Project* project = getProjectById(projectId);
 
     if (project->isArchived())
-        throw runtime_error(
-            "Cannot update archived project."
-        );
+        throw runtime_error("Cannot update archived project.");
 
-    UsedComponent* target = nullptr;
+    UsedComponent* target;
+    vector<UsedComponent>& p_components = project->getComponents();
 
-    for (auto& uc : project->getComponents()) {
-
-        if (uc.getComponent()->getId() == componentId) {
-            target = &uc;
+    for (size_t i = 0; i < p_components.size(); i++) {
+        if (p_components[i].getComponent()->getId() == componentId) {
+            target = &p_components[i];
             break;
         }
     }
 
     if (!target)
-        throw invalid_argument(
-            "Component not found in project."
-        );
+        throw invalid_argument("Component not found in project.");
 
     int oldQty = target->getAllocatedQuantity();
     int diff   = newQuantity - oldQty;
@@ -362,20 +373,11 @@ void Inventory::updateAllocation(
     Component* comp = getComponentById(componentId);
 
     if (diff > comp->getQuantity()) {
-
-        throw runtime_error(
-            "Insufficient stock."
-        );
+        throw runtime_error("Insufficient stock.");
     }
 
-    comp->setQuantity(
-        comp->getQuantity() - diff
-    );
-
-    project->updateComponentQuantity(
-        componentId,
-        newQuantity
-    );
+    comp->setQuantity(comp->getQuantity() - diff);
+    project->updateComponentQuantity(componentId, newQuantity);
 }
 
 void Inventory::archiveProject(int id)
@@ -385,17 +387,10 @@ void Inventory::archiveProject(int id)
     if (project->isArchived())
         return;
 
-    for (const auto& uc : project->getComponents()) {
-
-        Component* comp =
-            getComponentById(
-                uc.getComponent()->getId()
-            );
-
-        comp->setQuantity(
-            comp->getQuantity() +
-            uc.getAllocatedQuantity()
-        );
+    const vector<UsedComponent>& p_components = project->getComponents();
+    for (size_t i = 0; i < p_components.size(); i++) {
+        Component* comp = getComponentById(p_components[i].getComponent()->getId());
+        comp->setQuantity(comp->getQuantity() + p_components[i].getAllocatedQuantity());
     }
 
     project->archive();
@@ -408,21 +403,15 @@ void Inventory::activateProject(int id)
     if (!project->isArchived())
         return;
 
-    for (const auto& uc : project->getComponents()) {
-
-        Component* comp =
-            getComponentById(
-                uc.getComponent()->getId()
-            );
-
-        if (uc.getAllocatedQuantity() >
-            comp->getQuantity()) {
-
+    const vector<UsedComponent>& p_components = project->getComponents();
+    for (size_t i = 0; i < p_components.size(); i++) {
+        Component* comp = getComponentById(p_components[i].getComponent()->getId());
+        if (p_components[i].getAllocatedQuantity() > comp->getQuantity()) {
             throw runtime_error(
                 "Cannot activate project: insufficient stock for '"
                 + comp->getModel()
                 + "'. Need "
-                + to_string(uc.getAllocatedQuantity())
+                + to_string(p_components[i].getAllocatedQuantity())
                 + ", available "
                 + to_string(comp->getQuantity())
                 + "."
@@ -430,17 +419,9 @@ void Inventory::activateProject(int id)
         }
     }
 
-    for (const auto& uc : project->getComponents()) {
-
-        Component* comp =
-            getComponentById(
-                uc.getComponent()->getId()
-            );
-
-        comp->setQuantity(
-            comp->getQuantity() -
-            uc.getAllocatedQuantity()
-        );
+    for (size_t i = 0; i < p_components.size(); i++) {
+        Component* comp = getComponentById(p_components[i].getComponent()->getId());
+        comp->setQuantity(comp->getQuantity() - p_components[i].getAllocatedQuantity());
     }
 
     project->activate();
@@ -475,19 +456,20 @@ void Inventory::printDistribution(int componentId) const
     cout << C_WHITE << "  " << string(55, '-') << C_RESET << "\n";
 
     bool found = false;
-    for (const auto &p : projects)
+    for (size_t i = 0; i < this->projects.size(); i++)
     {
-        for (const auto &uc : p.getComponents())
+        const vector<UsedComponent>& p_components = this->projects[i].getComponents();
+        for (size_t j = 0; j < p_components.size(); j++)
         {
-            if (uc.getComponent()->getId() == componentId)
+            if (p_components[j].getComponent()->getId() == componentId)
             {
                 found = true;
-                string stCol = (p.getStatus() == "Active") ? C_GREEN : C_RED;
+                string stCol = (this->projects[i].getStatus() == "active") ? C_GREEN : C_RED;
 
-                cout << "  " << C_BOLD << C_YELLOW << left << setw(6) << p.getId() << C_RESET << " | "
-                     << C_WHITE << left << setw(20) << p.getName() << C_RESET << " | "
-                     << C_BOLD << stCol << left << setw(10) << p.getStatus() << C_RESET << " | "
-                     << C_WHITE << C_BOLD << left << setw(10) << uc.getAllocatedQuantity() << C_RESET << "\n";
+                cout << "  " << C_BOLD << C_YELLOW << left << setw(6) << this->projects[i].getId() << C_RESET << " | "
+                     << C_WHITE << left << setw(20) << this->projects[i].getName() << C_RESET << " | "
+                     << C_BOLD << stCol << left << setw(10) << this->projects[i].getStatus() << C_RESET << " | "
+                     << C_WHITE << C_BOLD << left << setw(10) << p_components[j].getAllocatedQuantity() << C_RESET << "\n";
             }
         }
     }
@@ -503,6 +485,22 @@ void Inventory::printDistribution(int componentId) const
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+void printRow(const string& field,
+              const string& val1,
+              const string& val2,
+              const string& color)
+{
+    cout << C_BOLD << C_CYAN;
+    cout << " " << left << setw(20) << field;
+    cout << C_RESET << " | ";
+
+    cout << color << left << setw(30) << val1;
+    cout << C_RESET << " | ";
+
+    cout << color << left << setw(30) << val2;
+    cout << C_RESET << "\n";
+}
+
 void Inventory::compareComponents(int id1, int id2) const
 {
     const Component *c1 = getComponentById(id1);
@@ -517,22 +515,6 @@ void Inventory::compareComponents(int id1, int id2) const
          << C_RESET;
 
     cout << C_WHITE << string(88, '-') << C_RESET << "\n";
-
-    auto printRow = [&](const string &field,
-                        const string &val1,
-                        const string &val2,
-                        const string &vCol)
-    {
-        cout << C_BOLD << C_CYAN
-             << " " << left << setw(20) << field
-             << C_RESET << " | "
-
-             << vCol << left << setw(30) << val1
-             << C_RESET << " | "
-
-             << vCol << left << setw(30) << val2
-             << C_RESET << "\n";
-    };
 
     printRow("Model",
              c1->getModel(),
@@ -652,6 +634,7 @@ void Inventory::compareComponents(int id1, int id2) const
             string rawKey = key;
             string unit = "";
 
+            // extract meassurment unit
             size_t s = rawKey.find('{');
             size_t e = rawKey.find('}');
 
@@ -746,19 +729,6 @@ vector<Component *> Inventory::searchByPriceRange(double minPrice, double maxPri
     return results;
 }
 
-Component* Inventory::searchByExactName(const string &name) const {
-    string lowerName = name;
-    transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
-
-    for (auto *c : this->components) {
-        string lowerModel = c->getModel();
-        transform(lowerModel.begin(), lowerModel.end(), lowerModel.begin(), ::tolower);
-        if (lowerModel == lowerName) {
-            return c;
-        }
-    }
-    return nullptr;
-}
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -770,9 +740,11 @@ void Inventory::generateBOM(int projectId) const {
     string filename = this->exportsPath + "BOM_" + project->getName() + ".txt";
     replace(filename.begin(), filename.end(), ' ', '_');
 
-    ofstream file(filename);
-    if (!file.is_open())
-        throw runtime_error("Failed to open export file: " + filename);
+    ofstream file;
+    file.open(filename);
+    if (!file.is_open()) {
+        throw runtime_error("Could not open file!");
+    }
 
     time_t now = time(nullptr);
     tm* local = localtime(&now);
@@ -825,18 +797,18 @@ void Inventory::generateBOM(int projectId) const {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static void padColumn(const std::string& text, std::size_t width) {
+static void alignColumn(const std::string& text, std::size_t width) {
     std::cout << text;
     if (text.size() < width)
         std::cout << std::string(width - text.size(), ' ');
 }
 
 void Inventory::importBOM(const std::string& filename) const {
-    std::ifstream file(filename);
-
-    if (!file.is_open())
-        throw std::runtime_error("Failed to open BOM file: " + filename);
-
+    ifstream file;
+    file.open(filename);
+    if (!file.is_open()) {
+        throw runtime_error("Could not open file!");
+    }
     struct BOMItem {
         std::string value;
         int quantity = 0;
@@ -918,13 +890,11 @@ void Inventory::importBOM(const std::string& filename) const {
         }
 
         BOMItem item;
-        item.value     = (valueIndex >= 0 && valueIndex < static_cast<int>(cells.size()) && !cells[valueIndex].empty()) ? cells[valueIndex] : "-";
-
+        item.value = (valueIndex >= 0 && valueIndex < static_cast<int>(cells.size()) && !cells[valueIndex].empty()) ? cells[valueIndex] : "-";
         std::string quantityText = (quantityIndex >= 0 && quantityIndex < static_cast<int>(cells.size())) ? cells[quantityIndex] : "0";
-        try { item.quantity = std::stoi(quantityText); } catch (...) { item.quantity = 0; }
-
+        try { item.quantity = std::stoi(quantityText); } catch (...) { item.quantity = 0; } // If conversion fails, default to 0
         item.reference = (referenceIndex >= 0 && referenceIndex < static_cast<int>(cells.size()) && !cells[referenceIndex].empty()) ? cells[referenceIndex] : "-";
-        item.mpn       = (mpnIndex >= 0 && mpnIndex < static_cast<int>(cells.size()) && !cells[mpnIndex].empty()) ? cells[mpnIndex] : "-";
+        item.mpn = (mpnIndex >= 0 && mpnIndex < static_cast<int>(cells.size()) && !cells[mpnIndex].empty()) ? cells[mpnIndex] : "-";
         item.footprint = (footprintIndex >= 0 && footprintIndex < static_cast<int>(cells.size()) && !cells[footprintIndex].empty()) ? cells[footprintIndex] : "-";
         item.datasheet = (datasheetIndex >= 0 && datasheetIndex < static_cast<int>(cells.size()) && !cells[datasheetIndex].empty()) ? cells[datasheetIndex] : "-";
 
@@ -935,40 +905,41 @@ void Inventory::importBOM(const std::string& filename) const {
     std::cout << C_WHITE << std::string(125, '=') << "\n" << C_RESET;
     std::cout << C_BOLD << C_CYAN << std::left;
 
-    std::cout << " "; padColumn("Name / Value", VALUE_WIDTH);
-    std::cout << " | "; padColumn("Quantity",  QUANTITY_WIDTH);
-    std::cout << " | "; padColumn("Designator", REFERENCE_WIDTH);
-    std::cout << " | "; padColumn("Manufacturer PN", MPN_WIDTH);
+    std::cout << " "; alignColumn("Name / Value", VALUE_WIDTH);
+    std::cout << " | "; alignColumn("Quantity",  QUANTITY_WIDTH);
+    std::cout << " | "; alignColumn("Designator", REFERENCE_WIDTH);
+    std::cout << " | "; alignColumn("Manufacturer PN", MPN_WIDTH);
     std::cout << "\n" << C_RESET;
     std::cout << C_WHITE << std::string(125, '-') << "\n" << C_RESET;
 
     for (const BOMItem& item : items) {
         std::cout << C_CYAN << " " << C_TEAL;
-        padColumn(item.value, VALUE_WIDTH);
+        alignColumn(item.value, VALUE_WIDTH);
         std::cout << C_RESET << " | " << C_YELLOW;
-        padColumn(std::to_string(item.quantity), QUANTITY_WIDTH);
+        alignColumn(std::to_string(item.quantity), QUANTITY_WIDTH);
         std::cout << C_RESET << " | " << C_ORANGE;
-        padColumn(item.reference, REFERENCE_WIDTH);
+        alignColumn(item.reference, REFERENCE_WIDTH);
         std::cout << C_RESET << " | " << C_WHITE;
-        padColumn(item.mpn, MPN_WIDTH);
+        alignColumn(item.mpn, MPN_WIDTH);
         std::cout << C_RESET << "\n";
     }
     std::cout << C_WHITE << std::string(125, '=') << "\n\n" << C_RESET;
 
+    
     if (footprintIndex != -1 || datasheetIndex != -1) {
         std::cout << "\n" << C_BOLD << C_CYAN << "  [ COMPONENT RESOURCES ]\n" << C_RESET;
         std::cout << C_WHITE << std::string(95, '=') << "\n" << C_RESET;
         std::cout << C_BOLD << C_CYAN << std::left;
 
-        std::cout << " "; padColumn("Name / Value", VALUE_WIDTH);
-        std::cout << " | "; padColumn("Datasheet", DATASHEET_WIDTH);
-        std::cout << " | "; padColumn("Footprint", FOOTPRINT_WIDTH);
+        std::cout << " "; alignColumn("Name / Value", VALUE_WIDTH);
+        std::cout << " | "; alignColumn("Datasheet", DATASHEET_WIDTH);
+        std::cout << " | "; alignColumn("Footprint", FOOTPRINT_WIDTH);
         std::cout << "\n" << C_RESET;
         std::cout << C_WHITE << std::string(95, '-') << "\n" << C_RESET;
 
         for (const BOMItem& item : items) {
             std::cout << C_TEAL << " ";
-            padColumn(item.value, VALUE_WIDTH);
+            alignColumn(item.value, VALUE_WIDTH);
             std::cout << C_RESET << " | ";
 
             if (item.datasheet != "-" && !item.datasheet.empty()) {
@@ -977,17 +948,17 @@ void Inventory::importBOM(const std::string& filename) const {
                     std::cout << std::string(DATASHEET_WIDTH - 4, ' ');
                 } else {
                     std::cout << C_WHITE;
-                    padColumn(item.datasheet, DATASHEET_WIDTH);
+                    alignColumn(item.datasheet, DATASHEET_WIDTH);
                     std::cout << C_RESET;
                 }
             } else {
                 std::cout << C_WHITE;
-                padColumn("-", DATASHEET_WIDTH);
+                alignColumn("-", DATASHEET_WIDTH);
                 std::cout << C_RESET;
             }
 
             std::cout << " | " << C_WHITE;
-            padColumn(item.footprint, FOOTPRINT_WIDTH);
+            alignColumn(item.footprint, FOOTPRINT_WIDTH);
             std::cout << C_RESET << "\n";
         }
         std::cout << C_WHITE << std::string(95, '=') << "\n\n" << C_RESET;
@@ -1028,7 +999,7 @@ void Inventory::importBOM(const std::string& filename) const {
             partiallyAvailableItems.push_back(
                 "  ► " + item.value + " (" + item.reference + ") -> Have "
                 + C_YELLOW + std::to_string(freeQty) + C_RESET
-                + " -> Needed: " + std::to_string(item.quantity) + " (" + item.mpn + ")"
+                + " -> Needed: " + std::to_string(item.quantity - freeQty) + " (" + item.mpn + ")"
                 + " -> Located in " + match->getStorageLocation());
         }
     }
@@ -1057,17 +1028,19 @@ void Inventory::importBOM(const std::string& filename) const {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+
 void Inventory::saveToFile() const
 {
     //Save categories
     // Format: id|type|name|field1|field2|...
-    ofstream catFile(this->dbPath + "categories.txt");
+    ofstream catFile;
+    catFile.open(this->dbPath + "categories.txt");
     if (!catFile.is_open())
-        return;
+        throw runtime_error("Could not open categories file!");
 
-    for (auto *cat : this->categories)
+    for (size_t i = 0; i < this->categories.size(); i++)
     {
-
+        Category* cat = this->categories[i];
         string type = "Custom";
         if (dynamic_cast<Resistor *>(cat))
             type = "Resistor";
@@ -1080,14 +1053,12 @@ void Inventory::saveToFile() const
 
         if (type == "Custom")
         {
-            auto fields = cat->getFields();
-            for (size_t i = 0; i < fields.size(); ++i)
+            vector<string> fields = cat->getFields();
+            for (size_t j = 0; j < fields.size(); j++)
             {
-                if (i > 0)
-                    catFile << "|";
-                else
-                    catFile << "|";
-                catFile << fields[i];
+
+                catFile << "|";
+                catFile << fields[j];
             }
         }
         else
@@ -1100,12 +1071,14 @@ void Inventory::saveToFile() const
     catFile.close();
 
     //Save components
-    ofstream compFile(this->dbPath + "components.txt");
+    ofstream compFile;
+    compFile.open(this->dbPath + "components.txt");
     if (!compFile.is_open())
-        return;
+        throw runtime_error("Could not open components file!");
 
-    for (auto *comp : this->components)
+    for (size_t i = 0; i < this->components.size(); i++)
     {
+        Component* comp = this->components[i];
         compFile << comp->getId() << "|"
                  << comp->getModel() << "|"
                  << comp->getPrice() << "|"
@@ -1117,30 +1090,37 @@ void Inventory::saveToFile() const
                  << comp->getManufacturerPN() << "|"
                  << (comp->getCategory() ? comp->getCategory()->getId() : 0);
 
-        for (const auto &cv : comp->getCustomValues())
-            compFile << "|" << cv.first << ":" << cv.second;
+        map<string, string> cv = comp->getCustomValues();
+        map<string, string>::const_iterator mapIt;
+        for (mapIt = cv.begin(); mapIt != cv.end(); mapIt++) {
+            compFile << "|" << mapIt->first << ":" << mapIt->second;
+        }
 
         compFile << "\n";
     }
     compFile.close();
 
     //Save projects
-    ofstream projFile(this->dbPath + "projects.txt");
+    ofstream projFile;
+    projFile.open(this->dbPath + "projects.txt");
     if (!projFile.is_open())
-        return;
+        throw runtime_error("Could not open projects file!");
 
-    for (const auto &p : this->projects)
+    for (size_t i = 0; i < this->projects.size(); i++)
     {
-        projFile << "PROJECT|" << p.getId() << "|"
-                 << p.getName() << "|"
-                 << p.getDescription() << "|"
-                 << p.getStatus() << "|"
-                 << p.getStartDate() << "\n";
+        projFile << "PROJECT|" << this->projects[i].getId() << "|"
+                 << this->projects[i].getName() << "|"
+                 << this->projects[i].getDescription() << "|"
+                 << this->projects[i].getStatus() << "|"
+                 << this->projects[i].getStartDate() << "\n";
 
-        for (const auto &uc : p.getComponents())
+        const vector<UsedComponent>& p_components = this->projects[i].getComponents();
+        for (size_t j = 0; j < p_components.size(); j++)
+        {
             projFile << "COMPONENT|"
-                     << uc.getComponent()->getId() << "|"
-                     << uc.getAllocatedQuantity() << "\n";
+                     << p_components[j].getComponent()->getId() << "|"
+                     << p_components[j].getAllocatedQuantity() << "\n";
+        }
     }
     projFile.close();
 }
@@ -1278,7 +1258,10 @@ void Inventory::loadFromFile()
             if (tokens[0] == "PROJECT" && tokens.size() >= 6)
             {
                 int id = stoi(tokens[1]);
-                this->projects.emplace_back(id, tokens[2], tokens[3], tokens[5]);
+
+                Project * newP = new Project(id, tokens[2], tokens[3], tokens[5]);
+                this->projects.push_back(*newP);
+                delete newP;
                 
                 std::string status = tokens[4];
                 std::transform(status.begin(), status.end(), status.begin(), ::tolower);
@@ -1303,19 +1286,21 @@ void Inventory::loadFromFile()
             }
         }
         projFile.close();
-    }
+    } 
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 void Inventory::clearAll()
 {
-    for (auto *c : this->components)
-        delete c;
+    for (size_t i = 0; i < this->components.size(); i++) {
+        delete this->components[i];
+    }
     this->components.clear();
 
-    for (auto *cat : this->categories)
-        delete cat;
+    for (size_t i = 0; i < this->categories.size(); i++) {
+        delete this->categories[i];
+    }
     this->categories.clear();
     this->projects.clear();
 

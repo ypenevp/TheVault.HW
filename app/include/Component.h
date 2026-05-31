@@ -18,7 +18,7 @@ private:
     std::string datasheet;
     Category *category;
     std::string manufacturerPN;
-    std::map<std::string, std::string> extraFields;
+    std::map<std::string, std::string> customValues;
 
 public:
     Component(int id, const std::string &model, double price, int quantity,
@@ -37,10 +37,8 @@ public:
     std::string getDatasheet() const;
     Category *getCategory() const;
     std::string getManufacturerPN() const;
-    std::map<std::string, std::string> customValues;
     const std::map<std::string, std::string> &getCustomValues() const;
-    const std::map<std::string, std::string> &getExtraFields() const;
-    
+
     void setModel(const std::string &model);
     void setPackage(const std::string &packageType);
     void setDatasheet(const std::string &datasheet);

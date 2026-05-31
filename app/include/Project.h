@@ -23,10 +23,10 @@ public:
     string getDescription() const;
     string getStatus() const;
     string getStartDate() const;
-    bool isArchived() const;
-
     vector<UsedComponent>& getComponents();
     const vector<UsedComponent>& getComponents() const;
+    double getTotalPrice() const;
+    bool isArchived() const;
 
     void setName(const string& name);
     void setDescription(const string& description);
@@ -38,9 +38,6 @@ public:
     void addComponent(Component* component, int quantity);
     void removeComponent(int componentId);
     void updateComponentQuantity(int componentId, int newQuantity);
-
-    double getTotalPrice() const;
-
     void loadComponent(Component* component, int quantity);
 };
 

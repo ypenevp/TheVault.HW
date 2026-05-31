@@ -26,10 +26,6 @@ void CustomCategory::removeField(const string& fieldName) {
 }
 
 
-vector<string> CustomCategory::getCustomFields() const {
-    return this->fieldNames;
-}
-
 string CustomCategory::getData() const {
     ostringstream oss;
     for (size_t i = 0; i < this->fieldNames.size(); ++i) {

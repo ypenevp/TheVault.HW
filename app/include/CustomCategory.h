@@ -16,10 +16,8 @@ public:
     void addField(const std::string& fieldName);
     void removeField(const std::string& fieldName);
 
-    std::vector<std::string> getCustomFields() const;
     std::string getData() const override;
     std::vector<std::string> getFields() const override;
-    
     void setFields(const std::vector<std::string>& values) override;
     Category* clone() const override;
 };

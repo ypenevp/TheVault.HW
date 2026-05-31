@@ -37,7 +37,7 @@ const string BRIGHT_ORANGE  = "\033[38;5;208m";
 const string BRIGHT_BLUE    = "\033[94m";
 
 
-static void enableANSI() {
+static void enableANSI() { 
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
@@ -51,7 +51,7 @@ static void enableANSI() {
 #endif
 }
 
-static void clearScreen() {
+static void clearScreen() { 
 #ifdef _WIN32
     system("cls");
 #else
@@ -59,43 +59,49 @@ static void clearScreen() {
 #endif
 }
 
-static void pauseScreen() {
+static void pauseScreen() { 
     cout << BRIGHT_CYAN << "\n  ► Press any key to continue..." << RESET;
     _getch();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static int readInt(const string& prompt) {
+static int readInt(const string& prompt) { 
     int value;
     while (true) {
         cout << BRIGHT_CYAN << prompt << RESET;
-        if (cin >> value) { cin.ignore(); return value; }
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+        if (cin >> value) { 
+            cin.ignore();  // \n
+            return value; 
+        }
+        cin.clear(); 
+        cin.ignore(numeric_limits<streamsize>::max(), '\n'); // discard invalid input
         cout << BRIGHT_RED << "  ✖ Invalid input. Please enter a number.\n" << RESET;
     }
 }
 
-static double readDouble(const string& prompt) {
+static double readDouble(const string& prompt) {  
     double value;
     while (true) {
         cout << BRIGHT_CYAN << prompt << RESET;
-        if (cin >> value) { cin.ignore(); return value; }
+        if (cin >> value) {
+            cin.ignore(); 
+            return value; 
+        }
         cin.clear();
         cin.ignore(numeric_limits<streamsize>::max(), '\n');
         cout << BRIGHT_RED << "  ✖ Invalid input. Please enter a number.\n" << RESET;
     }
 }
 
-static string readString(const string& prompt) {
+static string readString(const string& prompt) { 
     string value;
     cout << BRIGHT_CYAN << prompt << RESET;
     getline(cin, value);
     return value;
 }
 
-static string readStringOptional(const string& prompt, const string& defaultVal) {
+static string readStringOptional(const string& prompt, const string& defaultVal) { 
     if (defaultVal == "-") {
         cout << BRIGHT_CYAN << prompt << ":"  << RESET;
     } else {
@@ -108,7 +114,7 @@ static string readStringOptional(const string& prompt, const string& defaultVal)
     return value;
 }
 
-static double readDoubleOptional(const string& prompt, double defaultVal, const string& unit = "") {
+static double readDoubleOptional(const string& prompt, double defaultVal, const string& unit = "") { 
     while (true) {
         cout << BRIGHT_CYAN << prompt << " [" << defaultVal << unit << "]: " << RESET;
         string value;
@@ -122,7 +128,7 @@ static double readDoubleOptional(const string& prompt, double defaultVal, const 
     }
 }
 
-static string readDashOptional(const string& prompt) {
+static string handleEmptyInput(const string& prompt) { 
     cout << BRIGHT_CYAN << prompt << RESET;
     string input;
     getline(cin, input);
@@ -130,7 +136,7 @@ static string readDashOptional(const string& prompt) {
     return input;
 }
 
-static string readMountingType(const string& defaultVal = "") {
+static string readMountingType(const string& defaultVal = "") { 
     while (true) {
         string prompt = defaultVal.empty()
             ? "  ❖ Mounting Type (SMD / THT / Module): "
@@ -143,7 +149,7 @@ static string readMountingType(const string& defaultVal = "") {
     }
 }
 
-static void printHeader(const string& title) {
+static void printHeader(const string& title) { 
     clearScreen();
 
     cout << BRIGHT_CYAN << BOLD;
@@ -159,7 +165,7 @@ static void printHeader(const string& title) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static int selectFromMenu(const vector<string>& options, const string& title) {
+static int selectFromMenu(const vector<string>& options, const string& title) { 
     int choice = 0;
     int key;
 
@@ -170,7 +176,7 @@ static int selectFromMenu(const vector<string>& options, const string& title) {
         cout << "    " << BRIGHT_GREEN << left << setw(64) << title << BRIGHT_CYAN << "\n";
         cout << "  ✦ ════════════════════════════════════════════════════════════════ ✦\n" << RESET << "\n";
 
-        for (size_t i = 0; i < options.size(); ++i) {
+        for (size_t i = 0; i < options.size(); i++) {
             if (i == (size_t)choice) {
                 cout << "   " << BRIGHT_YELLOW << BOLD << "► " << left << setw(62) << options[i] << RESET << "\n";
             } else {
@@ -197,28 +203,29 @@ static int selectFromMenu(const vector<string>& options, const string& title) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static void printComponents(const vector<Component*>& comps, const Inventory& inv) {
+static void printComponents(const vector<Component*>& comps, const Inventory& inv) { 
     if (comps.empty()) {
         cout << BRIGHT_RED << "  No components found.\n" << RESET;
         return;
     }
 
     cout << "\n" << BOLD << BRIGHT_CYAN << left
-         << " "   << setw(4)  << "ID" // 5
+         << " "   << setw(4)  << "ID"
          << " | " << setw(18) << "Model"
-         << " | " << setw(13) << "Category" // 12
+         << " | " << setw(13) << "Category"
          << " | " << setw(8)  << "Price"
          << " | " << setw(5)  << "Total"
          << " | " << setw(5)  << "Free"
          << " | " << setw(10) << "Datasheet"
          << " | " << setw(7)  << "Mount"
          << " | " << setw(10) << "Package"
-         << " | " << setw(10) << "Location" //15
-         << " | " << setw(17) << "Manufacturer PN" << "\n" << RESET; // 12
+         << " | " << setw(10) << "Location"
+         << " | " << setw(17) << "Manufacturer PN" << "\n" << RESET;
 
-    cout << BRIGHT_WHITE << string(138, '-') << "\n" << RESET; // 135
+    cout << BRIGHT_WHITE << string(138, '-') << "\n" << RESET;
 
-    for (const auto* c : comps) {
+    for (size_t i = 0; i < comps.size(); i++) {
+        const Component* c = comps[i];
         int freeQty = inv.getFreeQuantity(c->getId());
         int totQty  = freeQty + inv.getAllocatedQuantity(c->getId());
 
@@ -235,9 +242,9 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
         ss << fixed << setprecision(2) << c->getPrice() << " €";
 
         cout << " "
-             << BOLD << SUPER_GREEN << left << setw(4) << c->getId() << RESET << " | " // 5
+             << BOLD << SUPER_GREEN << left << setw(4) << c->getId() << RESET << " | "
              << BRIGHT_WHITE << left << setw(18) << c->getModel() << RESET << " | "
-             << BOLD << BRIGHT_YELLOW << left << setw(13) << catName << RESET << " | " // 12
+             << BOLD << BRIGHT_YELLOW << left << setw(13) << catName << RESET << " | "
              << BOLD << SUPER_GREEN << left << setw(10) << ss.str() << RESET << " | "
              << BRIGHT_WHITE << left << setw(5) << totQty << RESET << " | "
              << BOLD << SUPER_GREEN << left << setw(5) << freeQty << RESET << " | ";
@@ -245,22 +252,22 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
         if (hasDs) {
             cout << BRIGHT_BLUE << "\033]8;;" << ds << "\033\\" << left << setw(10) << "Press Here" << "\033]8;;\033\\" << RESET << " | ";
         } else {
-            cout << BRIGHT_BLUE << left << setw(10) << "-" << RESET << " | ";
+            cout << BRIGHT_WHITE << left << setw(10) << "-" << RESET << " | ";
         }
 
         cout << BRIGHT_WHITE << left << setw(7) << c->getMountingType() << RESET << " | "
              << BRIGHT_WHITE << left << setw(10) << pkg << RESET << " | "
-             << BOLD << TECHNO_CYAN << left << setw(10) << c->getStorageLocation() << RESET << " | "; // 12
+             << BOLD << TECHNO_CYAN << left << setw(10) << c->getStorageLocation() << RESET << " | ";
 
         // show first 12 symbols of MPN then ..
         string mpn = c->getManufacturerPN();
         if (mpn.empty()) mpn = "-";
-        if (mpn.length() > 17) { // 12
-            mpn = mpn.substr(0, 15) + ".."; // 10
+        if (mpn.length() > 17) {
+            mpn = mpn.substr(0, 15) + "..";
         }
-        cout << BRIGHT_WHITE << left << setw(17) << mpn << RESET << "\n"; // 12
+        cout << BRIGHT_WHITE << left << setw(17) << mpn << RESET << "\n";
 
-        auto customVals = c->getCustomValues();
+        map<string, string> customVals = c->getCustomValues();
         if (!customVals.empty()) {
             string prefix = "       └─ " + BOLD + BRIGHT_MAGENTA + "Details: " + RESET;
             cout << prefix;
@@ -268,11 +275,13 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
             int currentLineLength = 17;
             int maxLineLength = 118;
 
-            for (auto it = customVals.begin(); it != customVals.end(); ++it) {
+            map<string, string>::const_iterator it;
+            for (it = customVals.begin(); it != customVals.end(); it++) {
                 string key = it->first;
                 string value = it->second;
                 string unit = "";
 
+                // extract meassurment unit
                 size_t s = key.find('{');
                 size_t e = key.find('}');
                 if (s != string::npos && e != string::npos && e > s) {
@@ -281,15 +290,19 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
                 }
 
                 int partLength = key.length() + 2 + value.length() + (unit.empty() ? 0 : 1 + unit.length());
-                if (next(it) != customVals.end()) {
+
+                map<string, string>::const_iterator nextIt = it;
+                nextIt++;
+
+                if (nextIt != customVals.end()) {
                     partLength += 2;
                 }
 
+                // many custom values => need to wrap
                 if (currentLineLength + partLength > maxLineLength) {
                     cout << "\n                   ";
                     currentLineLength = 19;
                 }
-
 
                 // add measurement units modifier
                 cout << BRIGHT_WHITE << key << ": " << BRIGHT_ORANGE;
@@ -306,8 +319,7 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
                 }
                 cout << RESET;
 
-
-                if (next(it) != customVals.end()) {
+                if (nextIt != customVals.end()) {
                     cout << BRIGHT_WHITE << ", " << RESET;
                 }
 
@@ -316,11 +328,11 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
             cout << "\n";
         }
 
-        cout << BRIGHT_WHITE << string(138, '-') << "\n" << RESET; // 120
+        cout << BRIGHT_WHITE << string(138, '-') << "\n" << RESET;
     }
 }
 
-static void printProjects(const vector<Project>& projects) {
+static void printProjects(const vector<Project>& projects) { 
     if (projects.empty()) {
         cout << BRIGHT_RED << "  ⚠ No projects found.\n" << RESET;
         return;
@@ -332,8 +344,9 @@ static void printProjects(const vector<Project>& projects) {
          << left << setw(12) << "Start Date" << RESET << "\n";
     cout << BRIGHT_WHITE << "  " << string(55, '-') << RESET << "\n";
 
-    for (const auto& p : projects) {
-        string statusColor = (p.getStatus() == "Active") ? BRIGHT_GREEN : BRIGHT_RED;
+    for (size_t i = 0; i < projects.size(); i++) {
+        const Project& p = projects[i];
+        string statusColor = (p.getStatus() == "active") ? BRIGHT_GREEN : BRIGHT_RED;
         cout << "  " << BOLD << BRIGHT_YELLOW << left << setw(5) << p.getId() << RESET << " | "
              << BOLD << BRIGHT_WHITE << left << setw(18) << p.getName() << RESET << " | "
              << BOLD << statusColor << left << setw(10) << p.getStatus() << RESET << " | "
@@ -343,14 +356,15 @@ static void printProjects(const vector<Project>& projects) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static int promptComponent(Inventory& inv, const string& title) {
-    auto comps = inv.getAllComponents();
+static int promptComponent(Inventory& inv, const string& title) { 
+    vector<Component*> comps = inv.getAllComponents();
     if (comps.empty()) {
         cout << BRIGHT_YELLOW << "  ⚠ No components available.\n" << RESET;
         return -1;
     }
     vector<string> opts;
-    for (auto* c : comps) {
+    for (size_t i = 0; i < comps.size(); i++) {
+        Component* c = comps[i];
         int free = inv.getFreeQuantity(c->getId());
         int tot  = free + inv.getAllocatedQuantity(c->getId());
         string catName = c->getCategory() ? c->getCategory()->getName() : "N/A";
@@ -368,14 +382,15 @@ static int promptComponent(Inventory& inv, const string& title) {
     return comps[sel]->getId();
 }
 
-static int promptCategory(Inventory& inv, const string& title) {
-    auto cats = inv.getAllCategories();
+static int promptCategory(Inventory& inv, const string& title) { 
+    vector<Category*> cats = inv.getAllCategories();
     if (cats.empty()) {
         cout << BRIGHT_YELLOW << "  ⚠ No categories available.\n" << RESET;
         return -1;
     }
     vector<string> opts;
-    for (auto* c : cats) {
+    for (size_t i = 0; i < cats.size(); i++) {
+        Category* c = cats[i];
         opts.push_back("ID: " + to_string(c->getId()) + "  " + c->getName());
     }
     opts.push_back("Back");
@@ -384,14 +399,15 @@ static int promptCategory(Inventory& inv, const string& title) {
     return cats[sel]->getId();
 }
 
-static int promptProject(Inventory& inv, const string& title) {
-    auto projs = inv.getAllProjects();
+static int promptProject(Inventory& inv, const string& title) { 
+    vector<Project> projs = inv.getAllProjects();
     if (projs.empty()) {
         cout << BRIGHT_YELLOW << "  ⚠ No projects available.\n" << RESET;
         return -1;
     }
     vector<string> opts;
-    for (const auto& p : projs) {
+    for (size_t i = 0; i < projs.size(); i++) {
+        const Project& p = projs[i];
         opts.push_back("ID: " + to_string(p.getId()) + "  " + p.getName() + "  [" + p.getStatus() + "]");
     }
     opts.push_back("Back");
@@ -405,7 +421,7 @@ static int promptProject(Inventory& inv, const string& title) {
 static void menuAddComponentToProject(Inventory& inv);
 static void menuRemoveComponentFromProject(Inventory& inv);
 
-static void menuAddComponent(Inventory& inv) {
+static void menuAddComponent(Inventory& inv) { 
     int catId = promptCategory(inv, "Select Category for Component");
     if (catId == -1) return;
 
@@ -417,8 +433,9 @@ static void menuAddComponent(Inventory& inv) {
     while (true) {
         model = readString("  ❖ Model: ");
         bool exists = false;
-        for (const auto* comp : inv.getAllComponents()) {
-            if (comp->getModel() == model) {
+        vector<Component*> allComps = inv.getAllComponents();
+        for (size_t i = 0; i < allComps.size(); i++) {
+            if (allComps[i]->getModel() == model) {
                 exists = true;
                 break;
             }
@@ -435,20 +452,21 @@ static void menuAddComponent(Inventory& inv) {
     int qty = readInt("  ❖ Quantity: ");
     string mt = readMountingType();
     string loc = readString("  ❖ Storage Location: ");
-    string packageType = readDashOptional("  ❖ Package: ");
-    string datasheet = readDashOptional("  ❖ Datasheet: ");
-    string mpn = readDashOptional("  ❖ Manufacturer PN: ");
+    string packageType = handleEmptyInput("  ❖ Package: ");
+    string datasheet = handleEmptyInput("  ❖ Datasheet: ");
+    string mpn = handleEmptyInput("  ❖ Manufacturer PN: ");
 
     map<string, string> extraFields;
-    auto fields = cat->getFields();
+    vector<string> fields = cat->getFields();
     if (!fields.empty()) {
         cout << BRIGHT_CYAN << "\n  Fill in category-specific fields:\n" << RESET;
-        for (const auto& field : fields) {
+        for (size_t i = 0; i < fields.size(); i++) {
+            string field = fields[i];
             string displayName = field;
-            size_t limit = field.find('{');
+            size_t limit = field.find('{'); // returns npos if not find
             if (limit != string::npos) displayName = field.substr(0, limit);
 
-            string val = readDashOptional("    ❖ " + displayName + ": ");
+            string val = handleEmptyInput("    ❖ " + displayName + ": ");
             extraFields[field] = val;
         }
     }
@@ -462,7 +480,7 @@ static void menuAddComponent(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuEditComponent(Inventory& inv) {
+static void menuEditComponent(Inventory& inv) { 
     int id = promptComponent(inv, "Select Component to edit");
     if (id == -1) return;
 
@@ -474,8 +492,9 @@ static void menuEditComponent(Inventory& inv) {
     while (true) {
         model = readStringOptional("  ❖ New Model", c->getModel());
         bool exists = false;
-        for (const auto* comp : inv.getAllComponents()) {
-            if (comp->getId() != id && comp->getModel() == model) {
+        vector<Component*> allComps = inv.getAllComponents();
+        for (size_t i = 0; i < allComps.size(); i++) {
+            if (allComps[i]->getId() != id && allComps[i]->getModel() == model) {
                 exists = true;
                 break;
             }
@@ -493,14 +512,15 @@ static void menuEditComponent(Inventory& inv) {
     string loc = readStringOptional("  ❖ New Storage Location", c->getStorageLocation());
     string packageType = readStringOptional("  ❖ New Package", c->getPackage());
     string datasheet = readStringOptional("  ❖ New Datasheet URL", c->getDatasheet());
-     string mpn = readStringOptional("  ❖ New Manufacturer PN", c->getManufacturerPN());
+    string mpn = readStringOptional("  ❖ New Manufacturer PN", c->getManufacturerPN());
 
     map<string, string> extraFields = c->getCustomValues();
-    auto fields = c->getCategory()->getFields();
+    vector<string> fields = c->getCategory()->getFields();
 
     if (!fields.empty()) {
         cout << BRIGHT_CYAN << "\n  Edit category-specific fields:\n" << RESET;
-        for (const auto& field : fields) {
+        for (size_t i = 0; i < fields.size(); i++) {
+            string field = fields[i];
             string displayName = field;
             size_t limit = field.find('{');
             if (limit != string::npos) displayName = field.substr(0, limit);
@@ -521,7 +541,7 @@ static void menuEditComponent(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuRemoveComponent(Inventory& inv) {
+static void menuRemoveComponent(Inventory& inv) { 
     int id = promptComponent(inv, "Select Component to remove");
     if (id == -1) return;
 
@@ -534,13 +554,13 @@ static void menuRemoveComponent(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuViewComponents(Inventory& inv) {
+static void menuViewComponents(Inventory& inv) { 
     printHeader("Inventory");
     printComponents(inv.getAllComponents(), inv);
     pauseScreen();
 }
 
-static void menuComponentsMenu(Inventory& inv) {
+static void menuComponentsMenu(Inventory& inv) { 
     vector<string> options = {
         "1. View All",
         "2. Add Component",
@@ -568,7 +588,7 @@ static void menuComponentsMenu(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static void menuAddCategory(Inventory& inv) {
+static void menuAddCategory(Inventory& inv) { 
     printHeader("Add Custom Category");
     string name = readString("  ❖ Category name: ");
     int fieldCount = readInt("  ❖ Number of custom fields: ");
@@ -591,7 +611,7 @@ static void menuAddCategory(Inventory& inv) {
     }
 
     try {
-        auto* cat = new CustomCategory(100 + inv.getAllCategories().size(), name, fields);
+        CustomCategory* cat = new CustomCategory(100 + inv.getAllCategories().size(), name, fields);
         inv.addCategory(cat);
         delete cat;
         cout << BRIGHT_GREEN << BOLD << "\n  ✔ Custom category added successfully.\n" << RESET;
@@ -601,7 +621,7 @@ static void menuAddCategory(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuCategoriesMenu(Inventory& inv) {
+static void menuCategoriesMenu(Inventory& inv) { 
     vector<string> options = {
         "1. View Categories",
         "2. Add Custom Category",
@@ -615,10 +635,12 @@ static void menuCategoriesMenu(Inventory& inv) {
         switch (choice) {
             case 0: {
                 printHeader("Categories");
-                auto cats = inv.getAllCategories();
+                vector<Category*> cats = inv.getAllCategories();
                 cout << BRIGHT_CYAN << "  ❖ Available Categories:\n" << RESET;
-                for (auto* c : cats)
+                for (size_t i = 0; i < cats.size(); i++) {
+                    Category* c = cats[i];
                     cout << "    [" << BOLD << BRIGHT_YELLOW << c->getId() << RESET << "] " << BOLD << BRIGHT_WHITE << c->getName() << RESET << "\n";
+                }
                 pauseScreen();
                 break;
             }
@@ -643,7 +665,7 @@ static void menuCategoriesMenu(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static void menuAddProject(Inventory& inv) {
+static void menuAddProject(Inventory& inv) { 
     printHeader("Add Project");
     string name = readString("  ❖ Project Name: ");
     string desc = readString("  ❖ Description: ");
@@ -665,14 +687,14 @@ static void menuAddProject(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuProjectDetails(Inventory& inv) {
+static void menuProjectDetails(Inventory& inv) { 
     int id = promptProject(inv, "Select Project to View Details");
     if (id == -1) return;
 
     printHeader("Project Details");
     try {
         Project p = inv.getProjectDetails(id);
-        string stColor = (p.getStatus() == "Active") ? BRIGHT_GREEN : BRIGHT_RED;
+        string stColor = (p.getStatus() == "active") ? BRIGHT_GREEN : BRIGHT_RED;
 
         cout << BRIGHT_CYAN << "  [ Project Info ]\n" << RESET;
         cout << "  ❖ Name       : " << BOLD << BRIGHT_WHITE << p.getName() << RESET << "\n"
@@ -682,17 +704,20 @@ static void menuProjectDetails(Inventory& inv) {
              << "  ❖ Total Price: " << BRIGHT_GREEN << BOLD << p.getTotalPrice() << " €\n" << RESET << "\n"
              << BRIGHT_CYAN << "  [ Components ]\n" << RESET;
 
-        for (const auto& uc : p.getComponents())
+        const vector<UsedComponent>& ucomps = p.getComponents();
+        for (size_t i = 0; i < ucomps.size(); i++) {
+            const UsedComponent& uc = ucomps[i];
             cout << "    ► " << BOLD << BRIGHT_WHITE << uc.getComponent()->getModel() << RESET
                  << "  x" << BRIGHT_YELLOW << uc.getAllocatedQuantity() << RESET
                  << "  (" << BRIGHT_GREEN << uc.getComponent()->getPrice() * uc.getAllocatedQuantity() << " €" << RESET << ")\n";
+        }
     } catch (const exception& e) {
         cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
     }
     pauseScreen();
 }
 
-static void menuAddComponentToProject(Inventory& inv) {
+static void menuAddComponentToProject(Inventory& inv) { 
     int projectId = promptProject(inv, "Select Project");
     if (projectId == -1) return;
 
@@ -711,12 +736,12 @@ static void menuAddComponentToProject(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuRemoveComponentFromProject(Inventory& inv) {
+static void menuRemoveComponentFromProject(Inventory& inv) { 
     int projectId = promptProject(inv, "Select Project");
     if (projectId == -1) return;
 
     Project p = inv.getProjectDetails(projectId);
-    const auto& comps = p.getComponents();
+    const vector<UsedComponent>& comps = p.getComponents();
 
     if (comps.empty()) {
         cout << BRIGHT_YELLOW << "  ⚠ Project '" << p.getName() << "' has no components.\n" << RESET;
@@ -725,7 +750,8 @@ static void menuRemoveComponentFromProject(Inventory& inv) {
     }
 
     vector<string> opts;
-    for (const auto& uc : comps) {
+    for (size_t i = 0; i < comps.size(); i++) {
+        const UsedComponent& uc = comps[i];
         opts.push_back("ID: " + to_string(uc.getComponent()->getId()) + "  "
                      + uc.getComponent()->getModel()
                      + "  [Allocated: " + to_string(uc.getAllocatedQuantity()) + "]");
@@ -777,11 +803,11 @@ static void menuRemoveComponentFromProject(Inventory& inv) {
     }
 }
 
-static void menuChangeProjectStatus(Inventory& inv) {
+static void menuChangeProjectStatus(Inventory& inv) { 
     int id = promptProject(inv, "Select Project to Change Status");
     if (id == -1) return;
 
-     vector<string> statusOptions = { "Archive", "Activate", "Back" };
+    vector<string> statusOptions = { "Archive", "Activate", "Back" };
     int statusChoice = selectFromMenu(statusOptions, "Project Status");
 
     try {
@@ -800,7 +826,7 @@ static void menuChangeProjectStatus(Inventory& inv) {
     }
 }
 
-static void menuProjectsMenu(Inventory& inv) {
+static void menuProjectsMenu(Inventory& inv) { 
     vector<string> options = {
         "1. View Projects",
         "2. Add Project",
@@ -890,7 +916,7 @@ static void menuProjectsMenu(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static void menuUpdateQuantity(Inventory& inv) {
+static void menuUpdateQuantity(Inventory& inv) { 
     int id = promptComponent(inv, "Select Component to Update Quantity");
     if (id == -1) return;
 
@@ -911,7 +937,7 @@ static void menuUpdateQuantity(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuStock(Inventory& inv) {
+static void menuStock(Inventory& inv) { 
     vector<string> options = {
         "1. View Stock Distribution",
         "2. Update Quantity",
@@ -939,7 +965,7 @@ static void menuStock(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static void menuSearchMenu(Inventory& inv) {
+static void menuSearchMenu(Inventory& inv) { 
     vector<string> searchOptions = {
         "1. Search by Model",
         "2. Search by Category",
@@ -998,7 +1024,7 @@ static void menuSearchMenu(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static void confirmDrop(Inventory& inv) {
+static void confirmDrop(Inventory& inv) { 
     vector<string> options = {
         "Back",
         "Delete"
@@ -1023,7 +1049,8 @@ static void confirmDrop(Inventory& inv) {
 
             bool success = true;
             try {
-                for (const auto& file : filesToDelete) {
+                for (size_t i = 0; i < filesToDelete.size(); i++) {
+                    string file = filesToDelete[i];
                     string fullPath = dbPath + file;
                     if (std::filesystem::exists(fullPath)) {
                         std::filesystem::remove(fullPath);
@@ -1103,7 +1130,7 @@ int main() {
                        pauseScreen();
                        break;
                    }
-                   case 7: { 
+                   case 7: {
                        printHeader("Import BOM (CSV)");
                        string path = readString("  ❖ Enter full path to CSV file: ");
                        clearScreen();

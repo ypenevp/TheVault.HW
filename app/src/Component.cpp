@@ -11,18 +11,18 @@ Component::Component(int id, const std::string &model, double price, int quantit
       category(category), manufacturerPN(manufacturerPN), customValues(customValues) {}
 
 
-int Component::getId() const { 
+int Component::getId() const {
   return this->id;
 }
-std::string Component::getModel() const { 
+std::string Component::getModel() const {
   return this->model;
 }
 
-double Component::getPrice() const { 
+double Component::getPrice() const {
   return this->price;
 }
 
-int Component::getQuantity() const { 
+int Component::getQuantity() const {
   return this->quantity;
 }
 
@@ -34,15 +34,15 @@ std::string Component::getDatasheet() const {
   return this->datasheet;
 }
 
-std::string Component::getMountingType() const { 
+std::string Component::getMountingType() const {
   return this->mountingType;
 }
 
-std::string Component::getStorageLocation() const { 
+std::string Component::getStorageLocation() const {
   return this->storageLocation;
 }
 
-Category *Component::getCategory() const { 
+Category *Component::getCategory() const {
   return this->category;
 }
 
@@ -50,11 +50,7 @@ std::string Component::getManufacturerPN() const {
     return this->manufacturerPN;
 }
 
-const std::map<std::string, std::string> &Component::getExtraFields() const { 
-  return this->extraFields;
-}
-
-const std::map<std::string, std::string> &Component::getCustomValues() const { 
+const std::map<std::string, std::string> &Component::getCustomValues() const {
   return customValues;
 }
 
@@ -67,7 +63,7 @@ void Component::setPrice(double price) {
   this->price = price;
 }
 
-void Component::setQuantity(int quantity) { 
+void Component::setQuantity(int quantity) {
   this->quantity = quantity;
 }
 
@@ -91,7 +87,7 @@ void Component::setManufacturerPN(const std::string &mpn) {
     this->manufacturerPN = mpn;
 }
 
-void Component::setCustomValue(const std::string &key, const std::string &value) { 
+void Component::setCustomValue(const std::string &key, const std::string &value) {
   customValues[key] = value;
 }
 

@@ -24,8 +24,6 @@ private:
 public:
     Inventory(const string& dbPath = "db/",
               const string& exportsPath = "exports/");
-    Inventory(const Inventory&) = delete;
-    Inventory& operator=(const Inventory&) = delete;
     int getAllocatedQuantity(int componentId) const;
 
     void addComponent(const std::string& model, double price, int quantity,
@@ -48,33 +46,28 @@ public:
     Category* getCategoryById(int id) const;
     vector<Category*> getAllCategories() const;
 
-    void addProject(const string& name, const string& description,
-                    const string& startDate);
+    void addProject(const string& name, const string& description, const string& startDate);
     void removeProject(int id);
-    void editProject(int id, const string& name, const string& description,
-                     const string& startDate);
+    void editProject(int id, const string& name, const string& description, const string& startDate);
     Project* getProjectById(int id);
-    const Project* getProjectById(int id) const;
+    const Project* getProjectById(int id) const; // for generateBOM andgetProjectDetails where is used const object
     vector<Project>& getAllProjects();
     Project getProjectDetails(int projectId) const;
+    void archiveProject(int id);
+    void activateProject(int id);
 
     void addComponentToProject(int projectId, int componentId, int quantity);
     void removeComponentFromProject(int projectId, int componentId);
     void updateAllocation(int projectId, int componentId, int newQuantity);
-    void archiveProject(int id);
-    void activateProject(int id);
-
     int getFreeQuantity(int componentId) const;
     void printDistribution(int componentId) const;
-
-    void compareComponents(int id1, int id2) const;
 
     vector<Component*> searchByName(const string& name) const;
     vector<Component*> searchByCategory(int categoryId) const;
     vector<Component*> searchByLocation(const string& location) const;
     vector<Component*> searchByPriceRange(double minPrice, double maxPrice) const;
-    Component* searchByExactName(const string& name) const;
 
+    void compareComponents(int id1, int id2) const;
     void generateBOM(int projectId) const;
     void importBOM(const string& filename) const;
 

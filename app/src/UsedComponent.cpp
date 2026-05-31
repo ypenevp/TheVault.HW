@@ -9,10 +9,11 @@ UsedComponent::UsedComponent(Component* component, int allocatedQuantity)
     if (allocatedQuantity <= 0) throw invalid_argument("Allocated quantity must be positive!");
 }
 
-Component* UsedComponent::getComponent() const { 
+Component* UsedComponent::getComponent() const {
     return this->component;
 }
-int UsedComponent::getAllocatedQuantity() const { 
+
+int UsedComponent::getAllocatedQuantity() const {
     return this->allocatedQuantity;
 }
 

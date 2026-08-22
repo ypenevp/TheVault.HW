@@ -167,12 +167,15 @@ vector<Component *> Inventory::getAllComponents() const
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-void Inventory::addCategory(Category *category)
+void Inventory::addCustomCategory(const std::string& name, const std::vector<std::string>& fields)
 {
-    if (!category)
-        throw invalid_argument("Category cannot be null.");
-    this->categories.push_back(category->clone());
-    this->nextCategoryId = max(this->nextCategoryId, category->getId() + 1);
+    if (name.empty())
+        throw invalid_argument("Category name cannot be empty.");
+    if (fields.empty())
+        throw invalid_argument("Custom category must have at least one field.");
+
+    Category* cat = new CustomCategory(this->nextCategoryId++, name, fields);
+    this->categories.push_back(cat);
 }
 
 void Inventory::removeCategory(int id)

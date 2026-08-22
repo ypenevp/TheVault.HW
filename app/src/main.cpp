@@ -165,23 +165,44 @@ static void printHeader(const string& title) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-static int selectFromMenu(const vector<string>& options, const string& title) { 
+static int selectFromMenu(const vector<string>& options, const string& title) {
     int choice = 0;
     int key;
 
+    const int maxVisible = 21;
+
     while (true) {
         clearScreen();
+
         cout << BRIGHT_CYAN << BOLD;
         cout << "  ✦ ════════════════════════════════════════════════════════════════ ✦\n";
         cout << "    " << BRIGHT_GREEN << left << setw(64) << title << BRIGHT_CYAN << "\n";
         cout << "  ✦ ════════════════════════════════════════════════════════════════ ✦\n" << RESET << "\n";
 
-        for (size_t i = 0; i < options.size(); i++) {
-            if (i == (size_t)choice) {
+        int startIndex = 0;
+        if ((int)options.size() > maxVisible) {
+            startIndex = choice - maxVisible / 2;
+            if (startIndex < 0) startIndex = 0;
+            if (startIndex > (int)options.size() - maxVisible)
+                startIndex = (int)options.size() - maxVisible;
+        }
+
+        int endIndex = min(startIndex + maxVisible, (int)options.size());
+
+        if (startIndex > 0) {
+            cout << BRIGHT_WHITE << "   ...\n" << RESET;
+        }
+
+        for (int i = startIndex; i < endIndex; i++) {
+            if (i == choice) {
                 cout << "   " << BRIGHT_YELLOW << BOLD << "► " << left << setw(62) << options[i] << RESET << "\n";
             } else {
                 cout << "      " << BRIGHT_WHITE << options[i] << RESET << "\n";
             }
+        }
+
+        if (endIndex < (int)options.size()) {
+            cout << BRIGHT_WHITE << "   ...\n" << RESET;
         }
 
         key = _getch();
@@ -269,7 +290,7 @@ static void printComponents(const vector<Component*>& comps, const Inventory& in
 
         map<string, string> customVals = c->getCustomValues();
         if (!customVals.empty()) {
-            string prefix = "       └─ " + BOLD + BRIGHT_MAGENTA + "Details: " + RESET;
+            string prefix = "       └─ " + BOLD + BRIGHT_MAGENTA + "Details:          " + RESET;
             cout << prefix;
 
             int currentLineLength = 17;
@@ -611,9 +632,7 @@ static void menuAddCategory(Inventory& inv) {
     }
 
     try {
-        CustomCategory* cat = new CustomCategory(100 + inv.getAllCategories().size(), name, fields);
-        inv.addCategory(cat);
-        delete cat;
+        inv.addCustomCategory(name, fields);
         cout << BRIGHT_GREEN << BOLD << "\n  ✔ Custom category added successfully.\n" << RESET;
     } catch (const exception& e) {
         cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;

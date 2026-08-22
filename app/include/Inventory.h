@@ -1,4 +1,4 @@
-#ifndef INVENTIRY_H
+#ifndef INVENTORY_H
 #define INVENTORY_H
 
 #include "Component.h"
@@ -40,7 +40,7 @@ public:
     Component* getComponentById(int id) const;
     vector<Component*> getAllComponents() const;
 
-    void addCategory(Category* category);
+    void addCustomCategory(const std::string& name, const std::vector<std::string>& fields);
     void removeCategory(int id);
     void editCategory(int id, const string& name);
     Category* getCategoryById(int id) const;

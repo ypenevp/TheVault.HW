@@ -2,6 +2,7 @@
 #include "Resistor.h"
 #include "Transistor.h"
 #include "Diode.h"
+#include "IC.h"
 #include "CustomCategory.h"
 #include <iostream>
 #include <iomanip>
@@ -12,6 +13,7 @@
 #include <filesystem>
 #include <sstream>
 #include <set>
+#include <algorithm>
 
 #ifdef _WIN32
   #define WIN32_LEAN_AND_MEAN
@@ -403,6 +405,46 @@ static int promptComponent(Inventory& inv, const string& title) {
     return comps[sel]->getId();
 }
 
+static int promptICComponent(Inventory& inv, const string& title)
+{
+    vector<Component*> all = inv.getAllComponents();
+    vector<Component*> ics;
+
+    for (size_t i = 0; i < all.size(); i++) {
+        if (dynamic_cast<IC*>(all[i]->getCategory())) {
+            ics.push_back(all[i]);
+        }
+    }
+
+    if (ics.empty()) {
+        cout << BRIGHT_YELLOW
+             << "  ⚠ No IC components available.\n"
+             << RESET;
+        return -1;
+    }
+
+    vector<string> opts;
+
+    for (size_t i = 0; i < ics.size(); i++) {
+        Component* c = ics[i];
+
+        ostringstream oss;
+        oss << "ID: " << left << setw(4) << c->getId()
+            << " | " << left << setw(18) << c->getModel();
+
+        opts.push_back(oss.str());
+    }
+
+    opts.push_back("Back");
+
+    int sel = selectFromMenu(opts, title);
+
+    if (sel == (int)ics.size())
+        return -1;
+
+    return ics[sel]->getId();
+}
+
 static int promptCategory(Inventory& inv, const string& title) { 
     vector<Category*> cats = inv.getAllCategories();
     if (cats.empty()) {
@@ -441,8 +483,12 @@ static int promptProject(Inventory& inv, const string& title) {
 
 static void menuAddComponentToProject(Inventory& inv);
 static void menuRemoveComponentFromProject(Inventory& inv);
+static void menuAddICSpecification(Inventory& inv, int componentId);
+static void menuViewICSpecifications(Inventory& inv);
 
-static void menuAddComponent(Inventory& inv) { 
+////////////////////////////////////////////////////////////////////////////////////////////
+
+static void menuAddComponent(Inventory& inv) {
     int catId = promptCategory(inv, "Select Category for Component");
     if (catId == -1) return;
 
@@ -484,7 +530,7 @@ static void menuAddComponent(Inventory& inv) {
         for (size_t i = 0; i < fields.size(); i++) {
             string field = fields[i];
             string displayName = field;
-            size_t limit = field.find('{'); // returns npos if not find
+            size_t limit = field.find('{');
             if (limit != string::npos) displayName = field.substr(0, limit);
 
             string val = handleEmptyInput("    ❖ " + displayName + ": ");
@@ -493,13 +539,20 @@ static void menuAddComponent(Inventory& inv) {
     }
 
     try {
-        inv.addComponent(model, price, qty, mt, loc, packageType, datasheet, cat, mpn,  extraFields);
+        inv.addComponent(model, price, qty, mt, loc, packageType, datasheet, cat, mpn, extraFields);
+
+        if (dynamic_cast<IC*>(cat)) {
+            Component* newComp = inv.getComponentById(inv.getAllComponents().back()->getId());
+            menuAddICSpecification(inv, newComp->getId());
+        }
+
         cout << BRIGHT_GREEN << BOLD << "\n  ✔ Component added successfully.\n" << RESET;
     } catch (const exception& e) {
         cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
     }
     pauseScreen();
 }
+
 
 static void menuEditComponent(Inventory& inv) { 
     int id = promptComponent(inv, "Select Component to edit");
@@ -581,7 +634,420 @@ static void menuViewComponents(Inventory& inv) {
     pauseScreen();
 }
 
-static void menuComponentsMenu(Inventory& inv) { 
+////////////////////////////////////////////////////////////////////////////////////////////
+
+static void menuAddICSpecification(Inventory& inv, int componentId)
+{
+    Component* comp = inv.getComponentById(componentId);
+    if (!comp || !dynamic_cast<IC*>(comp->getCategory())) {
+        cout << BRIGHT_RED << "  ✖ This component is not an IC.\n" << RESET;
+        pauseScreen();
+        return;
+    }
+
+    printHeader("Add IC Specification Details");
+
+    cout << BRIGHT_CYAN << "  Component: " << BRIGHT_WHITE << comp->getModel() << "\n\n" << RESET;
+
+    string icType       = readString("  ❖ IC Type: ");
+    string manufacturer = readString("  ❖ Manufacturer: ");
+    string protocol     = readString("  ❖ Communication protocol: ");
+
+    if (icType.empty())       icType = "-";
+    if (manufacturer.empty()) manufacturer = "-";
+    if (protocol.empty())     protocol = "-";
+
+    cout << BRIGHT_CYAN << "  ❖ Max Frequency: " << RESET;
+    string freqInput; 
+    getline(cin, freqInput);
+
+    string freqValue = freqInput;
+    string freqPrefix = "";
+
+    if (!freqValue.empty()) {
+        char last = freqValue.back();
+        if (isalpha(static_cast<unsigned char>(last))) {
+            freqPrefix = last;
+            freqValue.pop_back();
+        }
+        try { stod(freqValue); }
+        catch (...) { freqValue = ""; freqPrefix = ""; }
+    }
+
+    string finalFreq = freqValue + freqPrefix;
+    if (finalFreq.empty()) finalFreq = "-";
+
+    cout << BRIGHT_CYAN << "  ❖ Operating Voltage (range)\n" << RESET;
+    cout << "     Min V: ";
+    string minV; getline(cin, minV);
+    cout << "     Max V: ";
+    string maxV; getline(cin, maxV);
+
+    string opVoltage = "";
+    if (!minV.empty() || !maxV.empty())
+        opVoltage = minV + "V to " + maxV + "V";
+    if (opVoltage.empty()) opVoltage = "-";
+
+    cout << BRIGHT_CYAN << "  ❖ Operating Temperature (range)\n" << RESET;
+    cout << "     Min °C: ";
+    string minT; getline(cin, minT);
+    cout << "     Max °C: ";
+    string maxT; getline(cin, maxT);
+
+    string opTemp = "";
+    if (!minT.empty() || !maxT.empty())
+        opTemp = minT + "°C to " + maxT + "°C";
+    if (opTemp.empty()) opTemp = "-";
+
+    int pinCount = readInt("\n  ❖ Pin Count: ");
+
+    ICSpecification spec(
+        componentId,
+        icType,
+        pinCount,
+        manufacturer,
+        protocol,
+        finalFreq,
+        opVoltage,
+        opTemp
+    );
+
+    cout << BRIGHT_CYAN << "\n  Enter pin details:\n" << RESET;
+
+    for (int i = 1; i <= pinCount; i++) {
+        cout << BRIGHT_WHITE << "\n  --- Pin " << i << " of " << pinCount << " ---\n" << RESET;
+
+        int pinNum = readInt("  ❖ Pin Number: ");
+        string pinName = readString("  ❖ Pin Name: ");
+        string pinFunc = readString("  ❖ Pin Function: ");
+
+        try {
+            spec.addPin(pinNum, pinName, pinFunc);
+        }
+        catch (const exception& e) {
+            cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+            i--;
+            continue;
+        }
+    }
+
+    try {
+        inv.addICSpecification(spec);
+        cout << BRIGHT_GREEN << BOLD << "\n  ✔ IC Specification added successfully.\n" << RESET;
+    }
+    catch (const exception& e) {
+        cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
+    }
+
+    pauseScreen();
+}
+
+
+static void menuViewICSpecifications(Inventory& inv)
+{
+    const auto& specs = inv.getAllICSpecifications();
+    if (specs.empty()) {
+        cout << BRIGHT_YELLOW << "  ⚠ No IC specifications found.\n" << RESET;
+        pauseScreen();
+        return;
+    }
+
+    vector<string> opts;
+    for (const auto& spec : specs) {
+        Component* comp = inv.getComponentById(spec.getComponentId());
+        if (comp) {
+            ostringstream oss;
+            oss << BRIGHT_CYAN << "ID: " << spec.getComponentId() << RESET
+                << " | " << BRIGHT_WHITE << comp->getModel() << RESET
+                << " | " << BRIGHT_YELLOW << spec.getICType() << RESET;
+            opts.push_back(oss.str());
+        }
+    }
+    opts.push_back("Back");
+
+    int sel = selectFromMenu(opts, "TheVault.HW - IC Specifications");
+    if (sel == (int)specs.size()) return;
+
+    const ICSpecification& spec = specs[sel];
+    Component* comp = inv.getComponentById(spec.getComponentId());
+
+    printHeader("IC Specification Details");
+
+    cout << BRIGHT_CYAN << "  [ Component Info ]\n" << RESET;
+
+    cout << "  ❖ Model              : " << TECHNO_CYAN << comp->getModel() << RESET << "\n";
+    cout << "  ❖ Price              : " << SUPER_GREEN
+         << fixed << setprecision(2) << comp->getPrice() << " €" << RESET << "\n";
+    cout << "  ❖ Quantity           : " << BRIGHT_YELLOW << comp->getQuantity() << RESET << "\n";
+    cout << "  ❖ Free Quantity      : " << SUPER_GREEN << inv.getFreeQuantity(comp->getId()) << RESET << "\n";
+    cout << "  ❖ Mounting Type      : " << BRIGHT_WHITE << comp->getMountingType() << RESET << "\n";
+    cout << "  ❖ Storage Location   : " << BRIGHT_CYAN << comp->getStorageLocation() << RESET << "\n";
+    cout << "  ❖ Package            : " << BRIGHT_WHITE
+         << (comp->getPackage().empty() ? "-" : comp->getPackage()) << RESET << "\n";
+    cout << "  ❖ Manufacturer (MPN) : " << BRIGHT_WHITE
+         << (comp->getManufacturerPN().empty() ? "-" : comp->getManufacturerPN()) << RESET << "\n";
+
+    cout << "  ❖ Datasheet          : ";
+    if (!comp->getDatasheet().empty() && comp->getDatasheet() != "-") {
+        cout << BRIGHT_BLUE
+             << "\033]8;;" << comp->getDatasheet() << "\033\\"
+             << "Press Here"
+             << "\033]8;;\033\\" << RESET;
+    } else {
+        cout << BRIGHT_WHITE << "-" << RESET;
+    }
+    cout << "\n\n";
+
+    cout << BRIGHT_CYAN << "  [ IC Specification ]\n" << RESET;
+
+    cout << "  ❖ IC Type            : " << BRIGHT_YELLOW << spec.getICType() << RESET << "\n";
+    cout << "  ❖ Manufacturer       : " << BRIGHT_BLUE << spec.getManufacturer() << RESET << "\n";
+    cout << "  ❖ Interface          : " << BRIGHT_MAGENTA << spec.getProtocol() << RESET << "\n";
+    cout << "  ❖ Max Frequency      : " << BRIGHT_GREEN;
+    {
+        string freq = spec.getMaxFrequency();
+
+        if (freq == "-" || freq.empty()) {
+            cout << "-";
+        } else {
+            string value = freq;
+            string prefix = "";
+
+            char last = value.back();
+            if (isalpha(static_cast<unsigned char>(last))) {
+                prefix = last;
+                value.pop_back();
+            }
+
+            cout << value << " " << prefix << "Hz";
+        }
+    }
+    cout << RESET << "\n";
+    cout << "  ❖ Operating Voltage  : " << BRIGHT_ORANGE << spec.getOperatingVoltage() << RESET << "\n";
+    cout << "  ❖ Operating Temp     : " << BRIGHT_ORANGE << spec.getOperatingTemp() << RESET << "\n";
+    cout << "  ❖ Pin Count          : " << TECHNO_CYAN << spec.getPinCount() << RESET << "\n\n";
+
+    const auto& pins = spec.getPins();
+    if (!pins.empty()) {
+        cout << BRIGHT_CYAN << "  [ Pin Configuration ]\n" << RESET;
+
+        cout << BOLD << BRIGHT_GREEN
+             << "  Pin    | Name               | Function\n" << RESET;
+
+        cout << BRIGHT_WHITE << "  " << string(60, '-') << "\n" << RESET;
+
+        for (const auto& pin : pins) {
+            cout << "  " << BRIGHT_YELLOW << left << setw(6) << pin.number << RESET << " | "
+                 << BRIGHT_WHITE << left << setw(18) << pin.name << RESET << " | "
+                 << BRIGHT_WHITE << pin.function << "\n";
+        }
+    }
+
+    pauseScreen();
+}
+
+static void menuEditICSpecification(Inventory& inv)
+{
+    int compId = promptICComponent(inv, "Select IC Component to edit specification");
+    if (compId == -1) return;
+
+    Component* comp = inv.getComponentById(compId);
+    if (!comp || !dynamic_cast<IC*>(comp->getCategory())) {
+        cout << BRIGHT_RED << "  ✖ This component is not an IC.\n" << RESET;
+        pauseScreen();
+        return;
+    }
+
+    ICSpecification* spec = inv.getICSpecification(compId);
+    if (!spec) {
+        cout << BRIGHT_YELLOW
+             << "  ⚠ No IC specification found. Add one first.\n"
+             << RESET;
+        pauseScreen();
+        return;
+    }
+
+    printHeader("Edit IC Specification - General Info");
+
+    string icType = readStringOptional("  ❖ IC Type", spec->getICType());
+    string manufacturer = readStringOptional("  ❖ Manufacturer", spec->getManufacturer());
+    string protocol = readStringOptional("  ❖ Protocol", spec->getProtocol());
+    string maxFreq = readStringOptional("  ❖ Max Frequency", spec->getMaxFrequency());
+    cout << BRIGHT_CYAN << "  ❖ Operating Voltage (range)\n" << RESET;
+    string oldVolt = spec->getOperatingVoltage();
+    string oldMinV = "-", oldMaxV = "-";
+
+    if (oldVolt != "-" && oldVolt.find("V to ") != string::npos) {
+        size_t pos = oldVolt.find("V to ");
+        oldMinV = oldVolt.substr(0, pos);
+        oldMaxV = oldVolt.substr(pos + 5);
+        if (oldMaxV.size() > 1 && oldMaxV.back() == 'V') oldMaxV.pop_back();
+    }
+
+    cout << "     Min V [" << oldMinV << "]: ";
+    string minV; getline(cin, minV);
+    if (minV.empty()) minV = oldMinV;
+
+    cout << "     Max V [" << oldMaxV << "]: ";
+    string maxV; getline(cin, maxV);
+    if (maxV.empty()) maxV = oldMaxV;
+
+    string opVoltage = "-";
+    if (minV != "-" || maxV != "-")
+        opVoltage = minV + "V to " + maxV + "V";
+
+    cout << BRIGHT_CYAN << "  ❖ Operating Temperature (range)\n" << RESET;
+
+    string oldTemp = spec->getOperatingTemp();
+    string oldMinT = "-", oldMaxT = "-";
+
+    if (oldTemp != "-" && oldTemp.find("°C to ") != string::npos) {
+        size_t pos = oldTemp.find("°C to ");
+        oldMinT = oldTemp.substr(0, pos);
+        oldMaxT = oldTemp.substr(pos + 6);
+        if (oldMaxT.size() > 2 && oldMaxT.back() == 'C') oldMaxT.pop_back();
+    }
+
+    cout << "     Min °C [" << oldMinT << "]: ";
+    string minT; getline(cin, minT);
+    if (minT.empty()) minT = oldMinT;
+
+    cout << "     Max °C [" << oldMaxT << "]: ";
+    string maxT; getline(cin, maxT);
+    if (maxT.empty()) maxT = oldMaxT;
+
+    string opTemp = "-";
+    if (minT != "-" || maxT != "-")
+        opTemp = minT + "°C to " + maxT + "°C";
+
+    spec->setICType(icType);
+    spec->setManufacturer(manufacturer);
+    spec->setProtocol(protocol);
+    spec->setMaxFrequency(maxFreq);
+    spec->setOperatingVoltage(opVoltage);
+    spec->setOperatingTemp(opTemp);
+
+
+    vector<string> pinMenuOpts = {
+        "1. View / Edit existing pins",
+        "2. Add a new pin",
+        "3. Remove a pin",
+        "4. Save & Finish"
+    };
+
+    while (true) {
+        int choice = selectFromMenu(pinMenuOpts, "Manage Pins for " + comp->getModel());
+
+        if (choice == 0) {
+            vector<ICPin> currentPins = spec->getPins();
+            if (currentPins.empty()) {
+                cout << BRIGHT_YELLOW << "\n  ⚠ No pins configured yet.\n" << RESET;
+                pauseScreen();
+                continue;
+            }
+
+            sort(currentPins.begin(), currentPins.end(),
+                 [](const ICPin& a, const ICPin& b) { return a.number < b.number; });
+
+            vector<string> pinList;
+            for (const auto& pin : currentPins) {
+                pinList.push_back("Pin #" + to_string(pin.number) + " - " + pin.name + " (" + pin.function + ")");
+            }
+            pinList.push_back("Back");
+
+            int pSel = selectFromMenu(pinList, "Select Pin to Edit");
+            if (pSel == (int)currentPins.size()) continue;
+
+            const ICPin& targetPin = currentPins[pSel];
+            printHeader("Edit Pin #" + to_string(targetPin.number));
+
+            string newName = readStringOptional("  ❖ Pin Name", targetPin.name);
+            string newFunc = readStringOptional("  ❖ Pin Function", targetPin.function);
+
+            spec->updatePin(targetPin.number, newName, newFunc);
+            cout << BRIGHT_GREEN << "\n  ✔ Pin #" << targetPin.number << " updated successfully.\n" << RESET;
+            pauseScreen();
+        }
+        else if (choice == 1) {
+            printHeader("Add New Pin");
+
+            int nextPinNum = 1;
+            while (spec->getPinByNumber(nextPinNum) != nullptr) {
+                nextPinNum++;
+            }
+
+            int pinNum = readDoubleOptional("  ❖ Pin Number", nextPinNum);
+            if (spec->getPinByNumber(pinNum) != nullptr) {
+                cout << BRIGHT_RED << "\n  ✖ Pin #" << pinNum << " already exists!\n" << RESET;
+                pauseScreen();
+                continue;
+            }
+
+            string pinName = readString("  ❖ Pin Name: ");
+            string pinFunc = readString("  ❖ Pin Function: ");
+
+            try {
+                spec->addPin(pinNum, pinName, pinFunc);
+                cout << BRIGHT_GREEN << "\n  ✔ Pin #" << pinNum << " added successfully.\n" << RESET;
+            } catch (const exception& e) {
+                cout << BRIGHT_RED << "\n  ✖ Error: " << e.what() << "\n" << RESET;
+            }
+            pauseScreen();
+        }
+        else if (choice == 2) {
+            vector<ICPin> currentPins = spec->getPins();
+            if (currentPins.empty()) {
+                cout << BRIGHT_YELLOW << "\n  ⚠ No pins available to remove.\n" << RESET;
+                pauseScreen();
+                continue;
+            }
+
+            sort(currentPins.begin(), currentPins.end(),
+                 [](const ICPin& a, const ICPin& b) { return a.number < b.number; });
+
+            vector<string> pinList;
+            for (const auto& pin : currentPins) {
+                pinList.push_back("Pin #" + to_string(pin.number) + " - " + pin.name);
+            }
+            pinList.push_back("Back");
+
+            int pSel = selectFromMenu(pinList, "Select Pin to Remove");
+            if (pSel == (int)currentPins.size()) continue;
+
+            int targetNum = currentPins[pSel].number;
+            spec->removePin(targetNum);
+            cout << BRIGHT_GREEN << "\n  ✔ Pin #" << targetNum << " removed successfully.\n" << RESET;
+            pauseScreen();
+        }
+        else if (choice == 3) {
+            break;
+        }
+    }
+
+    vector<ICPin> finalPins = spec->getPins();
+    ICSpecification updatedSpec(
+        compId,
+        spec->getICType(),
+        (int)finalPins.size(),
+        spec->getManufacturer(),
+        spec->getProtocol(),
+        spec->getMaxFrequency(),
+        spec->getOperatingVoltage(),
+        spec->getOperatingTemp()
+    );
+
+    for (const auto& pin : finalPins) {
+        updatedSpec.addPin(pin.number, pin.name, pin.function);
+    }
+    *spec = updatedSpec;
+
+    cout << BRIGHT_GREEN << BOLD << "\n  ✔ IC Specification updated successfully.\n" << RESET;
+    pauseScreen();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+static void menuComponentsMenu(Inventory& inv) {
     vector<string> options = {
         "1. View All",
         "2. Add Component",
@@ -1043,6 +1509,36 @@ static void menuSearchMenu(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+static void menuIntegratedCircuits(Inventory& inv)
+{
+    vector<string> options = {
+        "1. View All IC Specifications",
+        "2. Edit IC Specification",
+        "3. Back"
+    };
+
+    while (true)
+    {
+        int choice = selectFromMenu(options, "The Vault.HW - Integrated Circuits");
+
+        switch (choice)
+        {
+            case 0:
+                menuViewICSpecifications(inv);
+                break;
+
+            case 1:
+                menuEditICSpecification(inv);
+                break;
+
+            case 2:
+                return;
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
 static void confirmDrop(Inventory& inv) { 
     vector<string> options = {
         "Back",
@@ -1096,7 +1592,8 @@ static void confirmDrop(Inventory& inv) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
-int main() {
+int main()
+{
     enableANSI();
 
     Inventory inv("db/", "exports/");
@@ -1105,68 +1602,106 @@ int main() {
         "1. Components",
         "2. Categories",
         "3. Projects",
-        "4. Search Components",
-        "5. Stock Management",
-        "6. Compare Components",
-        "7. Generate Project BOM",
-        "8. Import and analyse BOM",
-        "9. Destroy The Vault",
-        "10. Exit"
+        "4. Integrated Circuits",
+        "5. Search Components",
+        "6. Stock Management",
+        "7. Compare Components",
+        "8. Generate Project BOM",
+        "9. Import and analyse BOM",
+        "10. Destroy The Vault",
+        "11. Exit"
     };
 
-    while (true) {
-        int choice = selectFromMenu(mainMenu, "TheVault.HW - Main menu");
 
-               switch (choice) {
-                   case 0: menuComponentsMenu(inv); break;
-                   case 1: menuCategoriesMenu(inv); break;
-                   case 2: menuProjectsMenu(inv); break;
-                   case 3: menuSearchMenu(inv); break;
-                   case 4: menuStock(inv); break;
-                   case 5: {
-                       int id1 = promptComponent(inv, "First Component");
-                       if (id1 == -1) break;
+    while (true)
+    {
+        int choice = selectFromMenu(mainMenu, "The Vault.HW - Main Menu");
 
-                       int id2 = promptComponent(inv, "Second Component");
-                       if (id2 == -1) break;
-
-                       printHeader("Compare Components");
-                       try { inv.compareComponents(id1, id2); }
-                       catch (const exception& e) { cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET; }
-                       pauseScreen();
-                       break;
-                   }
-                   case 6: {
-                       int id = promptProject(inv, "Select Project to export BOM");
-                       if (id == -1) break;
-
-                       try {
-                           inv.generateBOM(id);
-                           cout << BRIGHT_GREEN << BOLD << "\n  ✔ BOM file successfully generated in exports/ folder.\n" << RESET;
-                       } catch (const exception& e) {
-                           cout << BRIGHT_RED << "  ✖ Error: " << e.what() << "\n" << RESET;
-                       }
-                       pauseScreen();
-                       break;
-                   }
-                   case 7: {
-                       printHeader("Import BOM (CSV)");
-                       string path = readString("  ❖ Enter full path to CSV file: ");
-                       clearScreen();
-                       try {
-                           inv.importBOM(path);
-                       } catch (const exception& e) {
-                           cout << BRIGHT_RED << "\n  ✖ Error: " << e.what() << "\n" << RESET;
-                       }
-                       pauseScreen();
-                       break;
-                   }
-                   case 8: confirmDrop(inv); break;
-                   case 9:
-                       inv.saveToFile();
-                       clearScreen();
-                       cout << BRIGHT_GREEN << BOLD << "\n  ✔ Data saved. Thank you for using TheVault.HW\n\n" << RESET;
-                       return 0;
-               }
+        switch (choice)
+        {
+            case 0:  menuComponentsMenu(inv); break;
+            case 1:  menuCategoriesMenu(inv); break;
+            case 2:  menuProjectsMenu(inv); break;
+            case 3:  menuIntegratedCircuits(inv); break;
+            case 4:  menuSearchMenu(inv); break;
+            case 5:  menuStock(inv); break;
+        
+            case 6:
+            {
+                int id1 = promptComponent(inv, "First Component");
+                if (id1 == -1) break;
+            
+                int id2 = promptComponent(inv, "Second Component");
+                if (id2 == -1) break;
+            
+                printHeader("Compare Components");
+            
+                try {
+                    inv.compareComponents(id1, id2);
+                }
+                catch (const exception& e) {
+                    cout << BRIGHT_RED
+                         << "  ✖ Error: " << e.what() << "\n"
+                         << RESET;
+                }
+            
+                pauseScreen();
+                break;
+            }
+        
+            case 7:
+            {
+                int id = promptProject(inv, "Select Project to export BOM");
+                if (id == -1) break;
+            
+                try {
+                    inv.generateBOM(id);
+                    cout << BRIGHT_GREEN << BOLD
+                         << "\n  ✔ BOM file successfully generated in exports/ folder.\n"
+                         << RESET;
+                }
+                catch (const exception& e) {
+                    cout << BRIGHT_RED
+                         << "  ✖ Error: " << e.what() << "\n"
+                         << RESET;
+                }
+            
+                pauseScreen();
+                break;
+            }
+        
+            case 8:
+            {
+                printHeader("Import BOM (CSV)");
+            
+                string path = readString("  ❖ Enter full path to CSV file: ");
+            
+                clearScreen();
+            
+                try {
+                    inv.importBOM(path);
+                }
+                catch (const exception& e) {
+                    cout << BRIGHT_RED
+                         << "\n  ✖ Error: " << e.what() << "\n"
+                         << RESET;
+                }
+            
+                pauseScreen();
+                break;
+            }
+        
+            case 9:  confirmDrop(inv); break;
+        
+            case 10:
+                inv.saveToFile();
+                clearScreen();
+        
+                cout << BRIGHT_GREEN << BOLD
+                     << "\n  ✔ Data saved. Thank you for using The Vault.HW\n\n"
+                     << RESET;
+        
+                return 0;
+        }
     }
 }

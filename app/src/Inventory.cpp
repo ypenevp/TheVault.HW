@@ -2,6 +2,8 @@
 #include "Resistor.h"
 #include "Transistor.h"
 #include "Diode.h"
+#include "IC.h"
+#include "ICSpecification.h"
 #include "CustomCategory.h"
 #include <stdexcept>
 #include <algorithm>
@@ -27,6 +29,7 @@ Inventory::Inventory(const string &dbPath, const string &exportsPath)
         this->categories.push_back(new Resistor(this->nextCategoryId++, "Resistor", 0, 0, 0, 0));
         this->categories.push_back(new Transistor(this->nextCategoryId++, "Transistor", "-", 0, 0, 0, 0, 0));
         this->categories.push_back(new Diode(this->nextCategoryId++, "Diode", 0, 0));
+        this->categories.push_back(new IC(this->nextCategoryId++, "IC"));
     }
 }
 
@@ -104,6 +107,13 @@ void Inventory::removeComponent(int id)
 {
     if (getAllocatedQuantity(id) > 0) {
         throw runtime_error("Cannot remove!!! Component is used in active project.");
+    }
+
+    for (size_t i = 0; i < icSpecifications.size(); i++) {
+        if (icSpecifications[i].getComponentId() == id) {
+            icSpecifications.erase(icSpecifications.begin() + i);
+            break;
+        }
     }
 
     int indexToRemove = -1;
@@ -1031,6 +1041,54 @@ void Inventory::importBOM(const std::string& filename) const {
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 
+void Inventory::addICSpecification(const ICSpecification& spec)
+{
+    if (hasICSpecification(spec.getComponentId())) {
+        throw invalid_argument("IC specification for component " +
+                             to_string(spec.getComponentId()) + " already exists.");
+    }
+    this->icSpecifications.push_back(spec);
+}
+
+void Inventory::removeICSpecification(int componentId)
+{
+    auto it = find_if(this->icSpecifications.begin(), this->icSpecifications.end(),
+        [componentId](const ICSpecification& spec) {
+            return spec.getComponentId() == componentId;
+        });
+
+    if (it != this->icSpecifications.end()) {
+        this->icSpecifications.erase(it);
+    }
+}
+
+ICSpecification* Inventory::getICSpecification(int componentId)
+{
+    for (auto& spec : this->icSpecifications) {
+        if (spec.getComponentId() == componentId) {
+            return &spec;
+        }
+    }
+    return nullptr;
+}
+
+const std::vector<ICSpecification>& Inventory::getAllICSpecifications() const
+{
+    return this->icSpecifications;
+}
+
+bool Inventory::hasICSpecification(int componentId) const
+{
+    for (const auto& spec : this->icSpecifications) {
+        if (spec.getComponentId() == componentId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
 
 void Inventory::saveToFile() const
 {
@@ -1051,6 +1109,8 @@ void Inventory::saveToFile() const
             type = "Transistor";
         else if (dynamic_cast<Diode *>(cat))
             type = "Diode";
+        else if (dynamic_cast<IC *>(cat))
+            type = "IC";
 
         catFile << cat->getId() << "|" << type << "|" << cat->getName();
 
@@ -1126,6 +1186,31 @@ void Inventory::saveToFile() const
         }
     }
     projFile.close();
+
+    // Save IC specifications
+    ofstream icSpecFile;
+    icSpecFile.open(this->dbPath + "ic_specifications.txt");
+    if (!icSpecFile.is_open())
+        throw runtime_error("Could not open ic_specifications file!");
+
+    for (const auto& spec : this->icSpecifications) {
+        icSpecFile << spec.getComponentId() << "|"
+                   << spec.getICType() << "|"
+                   << spec.getPinCount() << "|"
+                   << spec.getManufacturer() << "|"
+                   << spec.getProtocol() << "|"
+                   << spec.getMaxFrequency() << "|"
+                   << spec.getOperatingVoltage() << "|"
+                   << spec.getOperatingTemp();
+
+        const auto& pins = spec.getPins();
+        for (const auto& pin : pins) {
+            icSpecFile << "|PIN:" << pin.number << ":" << pin.name << ":" << pin.function;
+        }
+        icSpecFile << "\n";
+    }
+    icSpecFile.close();
+
 }
 
 void Inventory::loadFromFile()
@@ -1158,6 +1243,8 @@ void Inventory::loadFromFile()
                 cat = new Transistor(id, name, "NPN", 0, 0, 0, 0, 0);
             else if (type == "Diode")
                 cat = new Diode(id, name, 0, 0);
+            else if (type == "IC")
+                cat = new IC(id, name);
             else if (type == "Custom")
             {
                 vector<string> fields;
@@ -1289,7 +1376,68 @@ void Inventory::loadFromFile()
             }
         }
         projFile.close();
-    } 
+    }
+    // Load IC specifications
+    ifstream icSpecFile(this->dbPath + "ic_specifications.txt");
+    if (icSpecFile.is_open()) {
+        string line;
+
+        while (getline(icSpecFile, line)) {
+            if (line.empty()) continue;
+
+            istringstream ss(line);
+            string token;
+            vector<string> tokens;
+
+            while (getline(ss, token, '|')) {
+                tokens.push_back(token);
+            }
+
+            if (tokens.size() < 8) continue;
+
+            int componentId = stoi(tokens[0]);
+            string icType = tokens[1];
+            int pinCount = stoi(tokens[2]);
+            string manufacturer = tokens[3];
+            string protocol = tokens[4];
+            string maxFrequency = tokens[5];
+            string operatingVoltage = tokens[6];
+            string operatingTemp = tokens[7];
+
+            ICSpecification spec(
+                componentId,
+                icType,
+                pinCount,
+                manufacturer,
+                protocol,
+                maxFrequency,
+                operatingVoltage,
+                operatingTemp
+            );
+
+            // Load pins
+            for (size_t i = 8; i < tokens.size(); i++) {
+                if (tokens[i].find("PIN:") == 0) {
+
+                    size_t pos1 = 4;
+                    size_t pos2 = tokens[i].find(':', pos1);
+                    size_t pos3 = tokens[i].find(':', pos2 + 1);
+
+                    if (pos2 != string::npos && pos3 != string::npos) {
+                        int pinNum = stoi(tokens[i].substr(pos1, pos2 - pos1));
+                        string pinName = tokens[i].substr(pos2 + 1, pos3 - pos2 - 1);
+                        string pinFunc = tokens[i].substr(pos3 + 1);
+
+                        spec.addPin(pinNum, pinName, pinFunc);
+                    }
+                }
+            }
+
+            this->icSpecifications.push_back(spec);
+        }
+
+        icSpecFile.close();
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -1306,6 +1454,7 @@ void Inventory::clearAll()
     }
     this->categories.clear();
     this->projects.clear();
+    this->icSpecifications.clear();
 
     this->nextComponentId = 1;
     this->nextProjectId = 1;
@@ -1314,6 +1463,7 @@ void Inventory::clearAll()
     this->categories.push_back(new Resistor(this->nextCategoryId++, "Resistor", 0, 0, 0, 0));
     this->categories.push_back(new Transistor(this->nextCategoryId++, "Transistor", "-", 0, 0, 0, 0, 0));
     this->categories.push_back(new Diode(this->nextCategoryId++, "Diode", 0, 0));
+    this->categories.push_back(new IC(this->nextCategoryId++, "IC"));
 
     this->saveToFile();
 }

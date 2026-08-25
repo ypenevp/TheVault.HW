@@ -4,6 +4,7 @@
 #include "Component.h"
 #include "Category.h"
 #include "Project.h"
+#include "ICSpecification.h"
 #include <vector>
 #include <string>
 using namespace std;
@@ -12,6 +13,7 @@ class Inventory {
 private:
     vector<Component*> components;
     vector<Category*> categories;
+    std::vector<ICSpecification> icSpecifications;
     vector<Project> projects;
 
     int nextComponentId;
@@ -45,6 +47,12 @@ public:
     void editCategory(int id, const string& name);
     Category* getCategoryById(int id) const;
     vector<Category*> getAllCategories() const;
+
+    void addICSpecification(const ICSpecification& spec);
+    void removeICSpecification(int componentId);
+    ICSpecification* getICSpecification(int componentId);
+    const std::vector<ICSpecification>& getAllICSpecifications() const;
+    bool hasICSpecification(int componentId) const;
 
     void addProject(const string& name, const string& description, const string& startDate);
     void removeProject(int id);
